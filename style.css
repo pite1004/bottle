@@ -163,8 +163,62 @@ h1, h2, p { margin: 0; }
 
 .icon-btn svg { width: 22px; height: 22px; }
 
-.icon-btn[aria-pressed="true"] .icon-sound-off,
-.icon-btn[aria-pressed="false"] .icon-sound-on { display: none; }
+[aria-pressed="true"] .icon-sound-off,
+[aria-pressed="false"] .icon-sound-on { display: none; }
+
+/* 아이콘 + 아래 작은 글자 라벨 (누르는 영역은 둘 다 포함) */
+.tool {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.tool .icon-btn { position: relative; }
+
+.tool-label {
+  font-size: 11px;
+  line-height: 1;
+  color: var(--ink-sub);
+}
+
+.count-badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: #c2453a;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 19px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.news-dot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--sky-top);
+  border-radius: 50%;
+  background: #c2453a;
+}
+
+.count-badge[hidden], .news-dot[hidden] { display: none; }
 
 :focus-visible {
   outline: 3px solid #7fb2e0;
@@ -173,14 +227,16 @@ h1, h2, p { margin: 0; }
 
 /* ---------- 01 바다 ---------- */
 .topbar {
+  position: relative;
+  z-index: 30;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   padding: max(12px, env(safe-area-inset-top)) 16px 10px;
   background: var(--sky-top);
 }
 
-.topbar-title { flex: 1; min-width: 0; }
+.topbar-title { flex: 1; min-width: 0; padding-top: 3px; }
 
 .topbar-sub {
   font-size: 12px;
@@ -589,6 +645,71 @@ h1, h2, p { margin: 0; }
 }
 
 .menu-item:hover, .menu-item:focus-visible { background: #eef2f6; }
+
+/* ---------- 사용법 안내: 말풍선 · 소식 · 날아가는 편지 ---------- */
+.coach {
+  position: absolute;
+  z-index: 55;
+  max-width: 250px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #1d4a6b;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.5;
+  box-shadow: 0 8px 22px rgba(20, 26, 34, .25);
+  pointer-events: none;
+}
+
+.coach[hidden] { display: none; }
+
+/* 꼬리: 위(대상이 위에 있음) 또는 아래(대상이 아래에 있음) */
+.coach::before {
+  content: "";
+  position: absolute;
+  left: var(--arrow-x, 50%);
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  background: inherit;
+  transform: rotate(45deg);
+}
+
+.coach.below::before { top: -5px; }
+.coach.above::before { bottom: -5px; }
+
+.news-banner {
+  position: absolute;
+  left: 50%;
+  top: calc(max(12px, env(safe-area-inset-top)) + 70px);
+  z-index: 56;
+  max-width: calc(100% - 32px);
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 22px;
+  background: #fff;
+  color: #1d4a6b;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(20, 26, 34, .22);
+  transform: translateX(-50%);
+  cursor: pointer;
+}
+
+.news-banner[hidden] { display: none; }
+
+.fly {
+  position: absolute;
+  z-index: 58;
+  pointer-events: none;
+}
+
+.fly svg { display: block; width: 100%; height: 100%; }
+
+.archive-empty .btn { margin: 16px auto 0; width: auto; padding: 0 28px; }
 
 /* ---------- 00 인트로 ---------- */
 .story {

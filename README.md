@@ -30,6 +30,7 @@ firebase-config.js    Firebase 웹 앱 설정값 (비우면 체험 모드)
 firestore.rules       Firestore 보안 규칙 (콘솔에 붙여 넣는 원본)
 js/app.js             화면 전환, 버튼 동작
 js/intro.js           처음 들어올 때 보여 주는 인트로 (상단 바 ⋯ 메뉴에서 다시 보기)
+js/guide.js           사용법 안내: 한 번만 뜨는 말풍선, 보관함으로 날아가는 연출
 js/sea.js             바다 그리기, 병 움직임, 낚시
 js/bottle.js          병·쓰레기 그림(SVG), 꾸미기 선택지
 js/store.js           Firebase / 체험 모드 저장

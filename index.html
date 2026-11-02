@@ -21,12 +21,20 @@
           <p class="topbar-sub">2100년 · 해수면 +<span id="sea-level">1.1</span>m</p>
           <h1>잠긴 바다</h1>
         </div>
-        <button class="icon-btn" id="sound-btn" type="button" aria-label="바닷소리 끄기" aria-pressed="true">
-          <svg class="icon-sound-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          <svg class="icon-sound-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <button class="tool" id="sound-btn" type="button" aria-label="바닷소리 끄기" aria-pressed="true">
+          <span class="icon-btn" aria-hidden="true">
+            <svg class="icon-sound-on" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <svg class="icon-sound-off" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <span class="tool-label" aria-hidden="true">소리</span>
         </button>
-        <a class="icon-btn" href="#archive" aria-label="보관함">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v3H4zM5.5 10.5h13V19H5.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 13.5h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <a class="tool" id="archive-btn" href="#archive" aria-label="보관함">
+          <span class="icon-btn" id="archive-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 7.5h16v3H4zM5.5 10.5h13V19H5.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 13.5h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span class="count-badge" id="archive-count" hidden></span>
+            <span class="news-dot" id="archive-dot" hidden></span>
+          </span>
+          <span class="tool-label" aria-hidden="true">보관함</span>
         </a>
         <div class="menu-wrap">
           <button class="icon-btn" id="menu-btn" type="button" aria-label="메뉴" aria-haspopup="true" aria-expanded="false" aria-controls="top-menu">
@@ -106,7 +114,7 @@
         <div class="page-actions">
           <button class="btn btn-primary" id="save-card-btn" type="button">카드로 저장하기</button>
           <div class="btn-row">
-            <a class="btn btn-secondary" href="#sea">바다로 돌려보내기</a>
+            <a class="btn btn-secondary" href="#sea" id="letter-return">바다로 돌려보내기</a>
             <a class="btn btn-secondary" href="#write">나도 병 띄우기</a>
           </div>
         </div>
@@ -143,7 +151,7 @@
         </div>
         <div class="page-actions">
           <a class="btn btn-secondary" href="#archive?tab=collect">수집품 보기</a>
-          <a class="btn btn-primary" href="#sea">바다로 돌아가기</a>
+          <a class="btn btn-primary" href="#sea" id="found-return">바다로 돌아가기</a>
         </div>
       </div>
     </section>
@@ -316,6 +324,14 @@
 
       <button class="story-skip" id="story-skip" type="button">건너뛰기</button>
     </section>
+
+    <!-- 한 번만 뜨는 말풍선 (아무 데나 탭하면 닫힘) -->
+    <div class="coach" id="coach" role="status" hidden>
+      <p id="coach-text"></p>
+    </div>
+
+    <!-- 재방문 소식 -->
+    <button class="news-banner" id="news-banner" type="button" hidden></button>
 
     <p class="demo-badge" id="demo-badge" hidden>체험 모드</p>
     <p class="toast" id="toast" role="status" aria-live="polite" hidden></p>

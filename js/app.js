@@ -4,6 +4,7 @@ import { bottleSVG, trashSVG, TRASH_NAMES, OPTIONS, DEFAULT_LOOK, optionLabel } 
 import { checkText } from './moderation.js';
 import { renderCard, shareOrSave } from './card.js';
 import { createStory } from './intro.js';
+import { createCoach, coachSeen, flyTo, bounce } from './guide.js';
 import * as sound from './sound.js';
 import * as store from './store.js';
 
@@ -66,6 +67,7 @@ const screens = {
 };
 
 let currentLetter = null;
+let letterFresh = false; // 방금 바다에서 건진 편지인지 (보관함에서 다시 보는 것과 구분)
 let currentFound = null;
 let seaReady = false;
 let draftReady = false; // 검사를 통과한 글귀가 있어야 꾸미기로 갈 수 있다
@@ -90,12 +92,15 @@ function route() {
   if (target === 'decorate') renderDecorate();
   if (target === 'sent') playSent();
   if (target === 'archive') {
+    clearArchiveNews();
     const tab = new URLSearchParams(location.hash.split('?')[1] || '').get('tab');
     renderArchive(ARCHIVE_TABS.includes(tab) ? tab : 'caught');
   }
   if (target === 'sea') {
     if (seaReady) sea.start(); // 첫 병 목록을 받기 전엔 시작하지 않는다 (빈 바다 문구가 잠깐 뜨지 않게)
+    enterSea();
   } else {
+    coach.close();
     if (sea.busy) releaseFish();
     sea.stop();
   }
@@ -141,13 +146,16 @@ const sea = createSea($('scene'), {
   onProgress: renderProgress,
   async onLanded(f) {
     showFishPanel(false);
+    addArchiveNew();
     if (f.kind === 'bottle') {
       // 건진 횟수 기록이 실패해도 편지는 보여 준다
       store.catchBottle(f.data).catch((err) => console.error(err));
+      queueCoach('caught');
       showLetter(f.data);
       location.hash = 'letter';
       loadSea();
     } else {
+      queueCoach('trash');
       showFound(f.data.trash, store.addTrash(f.data.trash));
       location.hash = 'found';
     }
@@ -205,6 +213,7 @@ function letterMeta(createdAt) {
 // from: 'sea'(방금 건짐) 또는 'archive'(보관함에서 다시 보기) — 뒤로 가기 위치
 function showLetter(b, from = 'sea') {
   currentLetter = b;
+  letterFresh = from === 'sea';
   const back = $('letter-back');
   back.href = from === 'archive' ? '#archive' : '#sea';
   back.setAttribute('aria-label', from === 'archive' ? '보관함으로 돌아가기' : '바다로 돌아가기');
@@ -414,6 +423,7 @@ async function launch(chosenLook) {
   renderWrite();
   renderSent(bottle);
   sound.dip();
+  queueCoach('sent');
   location.replace('#sent');
   loadSea();
 }
@@ -471,7 +481,7 @@ function renderArchive(tab) {
 function renderCaught() {
   const list = store.listCaught();
   if (list.length === 0) {
-    archivePanel.innerHTML = `<p class="archive-empty">아직 건진 편지가 없어요.<br>바다에서 마음에 드는 병을 건져 보세요.</p>`;
+    archivePanel.innerHTML = `<div class="archive-empty">아직 건진 편지가 없어요.<br>바다에서 떠다니는 병을 탭해보세요<a class="btn btn-primary" href="#sea">바다로 가기</a></div>`;
     return;
   }
   archivePanel.innerHTML = list.map((b) => `
@@ -496,7 +506,7 @@ async function renderSentList() {
   }
   if (archiveTab !== 'sent') return; // 기다리는 사이 다른 탭으로 옮겼으면 그리지 않는다
   if (list.length === 0) {
-    archivePanel.innerHTML = `<div class="archive-empty">아직 띄운 병이 없어요.<a class="btn btn-primary" href="#write">나도 병 띄우기</a></div>`;
+    archivePanel.innerHTML = `<div class="archive-empty">띄운 병이 누군가에게 닿으면<br>여기에 숫자가 올라가요<a class="btn btn-primary" href="#write">병 띄우기</a></div>`;
     return;
   }
   archivePanel.innerHTML = list.map((b) => `
@@ -528,7 +538,10 @@ function renderCollect() {
     const done = total >= u.at;
     return `<li class="${done ? 'done' : ''}"><span>${u.name}</span><span>${done ? '해금됨' : `${u.at - total}개 더 모으면 해금`}</span></li>`;
   }).join('');
-  archivePanel.innerHTML = `
+  const empty = total === 0
+    ? `<p class="archive-empty" style="padding:8px 8px 4px">가끔 병 대신 쓰레기가 걸려요.<br>모으면 꾸미기 재료가 열려요</p>`
+    : '';
+  archivePanel.innerHTML = `${empty}
     <div class="collect-progress">
       <div class="collect-row"><span>바다에서 건진 것</span><span>${shown} / ${store.TRASH_GOAL}</span></div>
       <div class="reel-bar"><div class="reel-fill" style="width:${(shown / store.TRASH_GOAL) * 100}%"></div></div>
@@ -576,6 +589,9 @@ const story = createStory({
     store.save('bottle.seenStory', true);
     sound.defer(false); // "이야기 들어보기"·"건너뛰기"를 누른 이 탭에서 바닷소리를 켠다
   },
+  onDone() {
+    lastActivity = Date.now();
+  },
 });
 
 function playStory() {
@@ -608,6 +624,142 @@ $('replay-story-btn').addEventListener('click', () => {
   playStory();
 });
 
+// ---------- 사용법 안내: 보관함 배지 ----------
+// 배지 숫자 = 보관함을 마지막으로 연 뒤 새로 들어온 건진 편지·쓰레기 수
+const archiveBtn = $('archive-btn');
+const archiveIcon = $('archive-icon');
+
+function renderArchiveBadge(holdBack = 0) {
+  const n = Math.max(0, store.load('bottle.archiveNew', 0) - holdBack);
+  const dot = n === 0 && store.load('bottle.newsDot', false);
+  const count = $('archive-count');
+  count.hidden = n === 0;
+  count.textContent = n > 99 ? '99+' : String(n);
+  $('archive-dot').hidden = !dot;
+  archiveBtn.setAttribute('aria-label', n ? `보관함, 새로 들어온 것 ${n}개` : dot ? '보관함, 새 소식 있음' : '보관함');
+}
+
+function addArchiveNew() {
+  store.save('bottle.archiveNew', store.load('bottle.archiveNew', 0) + 1);
+}
+
+function clearArchiveNews() {
+  store.save('bottle.archiveNew', 0);
+  store.save('bottle.newsDot', false);
+  renderArchiveBadge();
+}
+
+// ---------- 사용법 안내: 날아가는 연출 ----------
+// "바다로 돌려보내기"·"바다로 돌아가기"를 누른 순간의 그림 위치를 기억했다가, 바다에 돌아오면 보관함으로 날린다
+let pendingFly = null;
+
+$('letter-return').addEventListener('click', () => {
+  const svg = $('letter-bottle').querySelector('svg');
+  if (letterFresh && svg) pendingFly = { rect: svg.getBoundingClientRect(), svg: bottleSVG(currentLetter) };
+});
+
+$('found-return').addEventListener('click', () => {
+  const svg = $('found-item').querySelector('svg');
+  if (svg) pendingFly = { rect: svg.getBoundingClientRect(), svg: trashSVG(currentFound) };
+});
+
+// ---------- 사용법 안내: 한 번만 뜨는 말풍선 ----------
+const coach = createCoach(app);
+const coachQueue = [];
+let lastActivity = Date.now();
+
+document.addEventListener('pointerdown', () => { lastActivity = Date.now(); }, true);
+document.addEventListener('keydown', () => { lastActivity = Date.now(); }, true);
+
+function queueCoach(key) {
+  if (!coachSeen(key) && !coachQueue.includes(key)) coachQueue.push(key);
+}
+
+// 인트로가 끝난 뒤, 바다 화면에서, 낚시 중이 아닐 때만. 동시에 하나만.
+function canCoach() {
+  return !screens.sea.hidden && !story.playing && !sea.busy && !coach.visible;
+}
+
+function tryCoach() {
+  if (!canCoach()) return;
+  while (coachQueue.length) {
+    const key = coachQueue.shift();
+    if (coachSeen(key)) continue;
+    coach.show(key, () => archiveIcon.getBoundingClientRect(), 'below');
+    return;
+  }
+}
+
+// 바다로 돌아왔을 때: 날아가는 연출 → 배지 +1 → 말풍선
+function enterSea() {
+  lastActivity = Date.now();
+  if (pendingFly) {
+    const fly = pendingFly;
+    pendingFly = null;
+    renderArchiveBadge(1); // 날아와 닿는 순간 +1 되도록 하나 덜 보여 준다
+    requestAnimationFrame(() => {
+      flyTo(app, fly.rect, fly.svg, archiveIcon).then(() => {
+        renderArchiveBadge();
+        bounce(archiveIcon);
+        setTimeout(tryCoach, 250);
+      });
+    });
+  } else {
+    renderArchiveBadge();
+    setTimeout(tryCoach, 500);
+  }
+}
+
+// 10초 동안 아무 조작이 없으면 가장 가까운 병 위에 "병을 탭해보세요" (병을 건진 적 있으면 안 뜸)
+setInterval(() => {
+  if (!canCoach()) return;
+  if (coachQueue.length) return tryCoach();
+  if (Date.now() - lastActivity < 10000) return;
+  if (coachSeen('idle') || store.listCaught().length > 0) return;
+  const near = sea.floaters
+    .filter((f) => f.kind === 'bottle' && f.z > 0.15 && f.z < 0.95)
+    .sort((a, b) => b.z - a.z)[0];
+  if (!near) return;
+  coach.show('idle', () => (sea.floaters.includes(near) ? near.el.getBoundingClientRect() : null), 'above');
+}, 1000);
+
+// ---------- 사용법 안내: 재방문 소식 ----------
+// 내 병들의 catches 합계가 지난번보다 늘었으면 알려 준다
+const newsBanner = $('news-banner');
+let newsTimer = 0;
+
+async function checkNews() {
+  let mine;
+  try {
+    mine = await store.listMyBottles();
+  } catch (err) {
+    console.error(err);
+    return;
+  }
+  const total = mine.reduce((sum, b) => sum + (b.catches || 0), 0);
+  const prev = store.load('bottle.catchTotal', null);
+  store.save('bottle.catchTotal', total);
+  if (prev === null || total <= prev) return;
+  store.save('bottle.newsDot', true);
+  renderArchiveBadge();
+  // 인트로가 도는 중이면 끝난 뒤에
+  const show = () => {
+    if (story.playing) return setTimeout(show, 500);
+    newsBanner.textContent = `띄운 병이 ${total - prev}명에게 더 닿았어요`;
+    newsBanner.hidden = false;
+    newsBanner.animate([{ opacity: 0, transform: 'translate(-50%, -8px)' }, { opacity: 1, transform: 'translate(-50%, 0)' }],
+      { duration: 300, easing: 'ease-out' });
+    clearTimeout(newsTimer);
+    newsTimer = setTimeout(() => { newsBanner.hidden = true; }, 4000);
+  };
+  show();
+}
+
+newsBanner.addEventListener('click', () => {
+  newsBanner.hidden = true;
+  location.hash = 'archive?tab=sent';
+});
+
 // ---------- 시작 ----------
 // 바다·인트로를 아래로 당겨 새로고침되는 것 막기
 document.addEventListener('touchmove', (e) => {
@@ -627,3 +779,4 @@ if (!store.load('bottle.seenStory', false) && !screens.sea.hidden) playStory();
 await loadSea();
 seaReady = true;
 if (!screens.sea.hidden) sea.start();
+checkNews();
