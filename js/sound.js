@@ -89,29 +89,36 @@ function apply() {
   if (enabled) {
     if (!ctx) build();
     if (!ctx) return;
-    ctx.resume();
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
     fadeTo(VOLUME, 2);
   } else if (ctx) {
     fadeTo(0, 0.6);
   }
 }
 
-// 첫 사용자 동작(탭·키 입력)에서 소리를 연다.
+// 사용자 동작(탭·키 입력) 때마다 소리가 멈춰 있으면 다시 켠다.
+// 폰 브라우저는 손가락을 "뗄 때"(pointerup·touchend·click)만 재생을 허락하고,
+// 다른 앱에 갔다 오면 소리를 멈춰 두기 때문에 한 번만 시도하면 안 된다.
+function onGesture() {
+  unlocked = true;
+  if (!enabled) return;
+  if (!ctx || ctx.state !== 'running') apply();
+}
+
 export function setup(initialOn) {
   enabled = initialOn;
-  const unlock = () => {
-    unlocked = true;
-    apply();
-    window.removeEventListener('pointerdown', unlock, true);
-    window.removeEventListener('keydown', unlock, true);
-  };
-  window.addEventListener('pointerdown', unlock, true);
-  window.addEventListener('keydown', unlock, true);
-  // 다른 탭으로 가면 멈추고, 돌아오면 다시
+  for (const type of ['pointerup', 'touchend', 'click', 'keydown']) {
+    window.addEventListener(type, onGesture, { capture: true, passive: true });
+  }
+  // 다른 탭·앱으로 가면 멈추고, 돌아오면 다시 (막히면 다음 탭에서 onGesture가 켠다)
   document.addEventListener('visibilitychange', () => {
     if (!ctx) return;
     if (document.hidden) ctx.suspend();
-    else if (enabled) ctx.resume();
+    else if (enabled) ctx.resume().catch(() => {});
+  });
+  // 아이폰 Safari는 뒤로 가기 캐시에서 돌아올 때 visibilitychange 대신 pageshow만 오기도 한다
+  window.addEventListener('pageshow', () => {
+    if (ctx && enabled) ctx.resume().catch(() => {});
   });
 }
 
