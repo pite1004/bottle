@@ -403,11 +403,42 @@ h1, h2, p { margin: 0; }
 .sea-empty[hidden] { display: none; }
 
 .bottom {
+  position: relative;
+  z-index: 20;
+  padding: 14px 16px max(16px, env(safe-area-inset-bottom));
+  background: var(--sea-4);
+}
+
+.bottom-idle {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 14px 16px max(16px, env(safe-area-inset-bottom));
-  background: var(--sea-4);
+}
+
+/* 낚시 중에는 높이는 그대로 두고 위로 겹쳐 띄운다 (바다 크기가 바뀌지 않게) */
+.bottom.fishing .bottom-idle { visibility: hidden; }
+
+.bottom-fish {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 28px 16px max(12px, env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, var(--sea-4) 26px);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.bottom-fish[hidden] { display: none; }
+
+.fish-title {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .hint {
@@ -415,6 +446,103 @@ h1, h2, p { margin: 0; }
   font-size: 14px;
   color: var(--ink-sub);
 }
+
+.reel { margin: 4px 0 2px; }
+.reel.idle { visibility: hidden; }
+
+.reel-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, .5);
+  overflow: hidden;
+}
+
+#app[data-time="night"] .reel-bar { background: rgba(255, 255, 255, .14); }
+
+.reel-fill {
+  width: 0%;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--primary);
+}
+
+.reel-text {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-sub);
+  font-variant-numeric: tabular-nums;
+}
+
+.btn-hold {
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+
+.btn-hold:disabled { opacity: .55; cursor: default; }
+.btn-hold.holding { background: var(--primary-ink); transform: scale(.98); }
+
+.btn-text {
+  align-self: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--ink-sub);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* 낚시 효과 */
+.effects { position: absolute; inset: 0; pointer-events: none; z-index: 1500; }
+
+.ripple {
+  position: absolute;
+  width: 26px;
+  height: 8px;
+  margin: -4px 0 0 -13px;
+  border: 2px solid rgba(255, 255, 255, .85);
+  border-radius: 50%;
+}
+
+.hook-bubble {
+  position: absolute;
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: #fff;
+  color: #1d4a6b;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  transform: translate(-50%, -100%);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .12);
+}
+
+.hook-bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: #fff;
+  transform: rotate(45deg);
+}
+
+.drop {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .9);
+}
+
+.rod-hook { fill: none; stroke: var(--rod); stroke-width: 1.4; stroke-linecap: round; }
 
 /* 첫 방문 안내 */
 .intro {
@@ -482,6 +610,133 @@ h1, h2, p { margin: 0; }
   padding: 32px 16px;
   color: #5b6370;
 }
+
+/* ---------- 04 편지 · 04-b 쓰레기 ---------- */
+.screen-page {
+  background: #eef2f6;
+  color: #1f2328;
+  --ink: #1f2328;
+  --ink-sub: #5b6370;
+  --line: #c5cbd2;
+  --btn-icon-bg: #fff;
+}
+
+.page-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 16px max(16px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+}
+
+.letter-bottle, .found-item {
+  display: grid;
+  place-items: center;
+  height: 190px;
+  margin-top: 4px;
+  border-radius: 20px;
+  background: linear-gradient(#e3edf5, #d3dde6);
+}
+
+.letter-bottle svg, .found-item svg { width: 76px; height: 152px; }
+
+.letter-card {
+  padding: 22px 20px 12px;
+  border: 1px solid #e0d6bf;
+  border-radius: 16px;
+  background: #fbf7ec;
+  box-shadow: 0 2px 10px rgba(31, 35, 40, .05);
+}
+
+.letter-text {
+  min-height: 72px;
+  color: #2a2620;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.font-pen { font-family: "Nanum Pen Script", cursive; font-size: 28px; line-height: 1.35; }
+.font-round { font-family: "Gaegu", cursive; font-size: 22px; line-height: 1.5; }
+.font-mono { font-family: "Nanum Gothic Coding", monospace; font-size: 17px; line-height: 1.7; }
+
+.letter-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 6px;
+  border-top: 1px dashed #d9cfb8;
+  font-size: 13px;
+  color: #5b6370;
+}
+
+.btn-report { font-size: 13px; padding: 0 4px; }
+
+.page-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.btn-row { display: flex; gap: 10px; }
+.btn-row .btn { flex: 1; font-size: 15px; }
+
+.found-copy { text-align: center; }
+.found-title { font-size: 18px; font-weight: 700; }
+.found-sub { margin-top: 6px; font-size: 14px; color: #5b6370; }
+
+.collect-progress {
+  padding: 14px 16px;
+  border: 1px solid #c5cbd2;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.collect-progress .reel-bar { background: #e3edf5; }
+
+.collect-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.unlock-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: #e3edf5;
+  color: #1d4a6b;
+}
+
+.unlock-card[hidden] { display: none; }
+.unlock-bottle svg { width: 30px; height: 60px; display: block; }
+.unlock-title { font-weight: 700; }
+.unlock-name { font-size: 14px; }
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: calc(150px + env(safe-area-inset-bottom));
+  z-index: 60;
+  max-width: calc(100% - 32px);
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: rgba(31, 35, 40, .88);
+  color: #fff;
+  font-size: 14px;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.toast[hidden] { display: none; }
 
 .demo-badge {
   position: absolute;

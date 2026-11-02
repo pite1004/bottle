@@ -9,6 +9,8 @@ const KEY = {
   demo: 'bottle.demo.bottles',
   caught: 'bottle.caught',
   mine: 'bottle.mine',
+  reported: 'bottle.reported',
+  trash: 'bottle.trash',
 };
 
 export function load(key, fallback) {
@@ -93,4 +95,70 @@ export async function listSeaBottles() {
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 60)
     .filter((b) => !b.hidden && b.owner !== uid && !mine.has(b.id) && !caught.has(b.id));
+}
+
+function updateDemo(id, change) {
+  const list = demoBottles();
+  const b = list.find((x) => x.id === id);
+  if (!b) return null;
+  change(b);
+  save(KEY.demo, list);
+  return b;
+}
+
+// 건진 병: catches +1, 이 기기의 "건진 편지"에 저장(같은 병은 한 번만)
+export async function catchBottle(bottle) {
+  const caught = load(KEY.caught, []);
+  if (caught.some((c) => c.id === bottle.id)) return;
+  if (bottle.owner !== myUid()) updateDemo(bottle.id, (b) => { b.catches += 1; });
+  const { id, text, font, shape, color, cork, inside, createdAt } = bottle;
+  caught.unshift({ id, text, font, shape, color, cork, inside, createdAt, caughtAt: Date.now() });
+  save(KEY.caught, caught);
+}
+
+export function hasReported(id) {
+  return load(KEY.reported, []).includes(id);
+}
+
+// 신고: reports +1, 3 이상이면 숨김. 같은 기기에서 같은 병은 한 번만.
+export async function reportBottle(id) {
+  const reported = load(KEY.reported, []);
+  if (reported.includes(id)) return false;
+  updateDemo(id, (b) => {
+    b.reports += 1;
+    if (b.reports >= 3) b.hidden = true;
+  });
+  reported.push(id);
+  save(KEY.reported, reported);
+  return true;
+}
+
+// ---------- 쓰레기 수집품 ----------
+export const TRASH_GOAL = 10;
+export const UNLOCKS = [
+  { at: 3, part: 'cork', value: 'seaglass', name: '마개 · 바다유리 장식' },
+  { at: 6, part: 'inside', value: 'stardust', name: '넣을 것 · 별모래' },
+];
+
+export function trashCounts() {
+  return { pet: 0, vinyl: 0, can: 0, ...load(KEY.trash, {}) };
+}
+
+export function trashTotal(counts = trashCounts()) {
+  return Object.values(counts).reduce((a, b) => a + b, 0);
+}
+
+export function unlockedValues() {
+  const total = trashTotal();
+  return new Set(UNLOCKS.filter((u) => total >= u.at).map((u) => u.value));
+}
+
+// 쓰레기 하나를 모으고, 이번에 새로 해금된 재료가 있으면 돌려준다.
+export function addTrash(kind) {
+  const counts = trashCounts();
+  const before = trashTotal(counts);
+  counts[kind] = (counts[kind] || 0) + 1;
+  save(KEY.trash, counts);
+  const total = before + 1;
+  return { total, counts, unlocked: UNLOCKS.find((u) => u.at === total) || null };
 }

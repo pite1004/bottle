@@ -43,19 +43,37 @@
           <div class="wave wave-3" aria-hidden="true"></div>
         </div>
         <div class="floaters"></div>
+        <div class="effects"></div>
         <svg class="rod" aria-hidden="true">
           <path class="rod-line"/>
-          <path class="rod-shaft"/>
-          <path class="rod-grip"/>
-          <g class="rod-rings"></g>
-          <circle class="rod-tip" r="2.4"/>
+          <path class="rod-hook"/>
+          <g class="rod-body">
+            <path class="rod-shaft"/>
+            <path class="rod-grip"/>
+            <g class="rod-rings"></g>
+            <circle class="rod-tip" r="2.4"/>
+          </g>
         </svg>
         <p class="sea-empty" id="sea-empty" hidden>아직 바다가 조용해요. 첫 병을 띄워보세요</p>
       </div>
 
       <footer class="bottom">
-        <p class="hint">마음에 드는 병을 탭하면 바늘을 던져요</p>
-        <a class="btn btn-primary" href="#write">나도 병 띄우기</a>
+        <div class="bottom-idle" id="bottom-idle">
+          <p class="hint">마음에 드는 병을 탭하면 바늘을 던져요</p>
+          <a class="btn btn-primary" href="#write">나도 병 띄우기</a>
+        </div>
+
+        <!-- 02·03 걸림 · 끌어올리기 -->
+        <div class="bottom-fish" id="bottom-fish" hidden>
+          <p class="fish-title" id="fish-title">꾹 누르고 있으면 끌어올려요</p>
+          <p class="hint" id="fish-sub">손을 떼면 병이 다시 멀어져요</p>
+          <div class="reel" id="reel" role="progressbar" aria-label="끌어올린 정도" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="reel-bar"><div class="reel-fill" id="reel-fill"></div></div>
+            <p class="reel-text" id="reel-text">끌어올리는 중… 0%</p>
+          </div>
+          <button class="btn btn-primary btn-hold" id="hold-btn" type="button" disabled>꾹 눌러서 끌어올리기</button>
+          <button class="btn-text" id="release-btn" type="button">놓아주기</button>
+        </div>
       </footer>
 
       <div class="intro" id="intro" hidden>
@@ -65,6 +83,68 @@
           <span class="intro-text">마음에 드는 병을 탭해 건져 보세요.</span>
           <span class="intro-tap">화면을 탭하면 시작해요</span>
         </button>
+      </div>
+    </section>
+
+    <!-- 04 건진 편지 -->
+    <section class="screen screen-page screen-letter" id="screen-letter" data-route="letter" hidden>
+      <header class="subbar">
+        <a class="icon-btn" href="#sea" aria-label="바다로 돌아가기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <h2>건진 병</h2>
+      </header>
+      <div class="page-body">
+        <div class="letter-bottle" id="letter-bottle"></div>
+        <article class="letter-card">
+          <p class="letter-text" id="letter-text"></p>
+          <div class="letter-meta">
+            <p id="letter-meta"></p>
+            <button class="btn-text btn-report" id="report-btn" type="button">신고하기</button>
+          </div>
+        </article>
+        <div class="page-actions">
+          <button class="btn btn-primary" id="save-card-btn" type="button">카드로 저장하기</button>
+          <div class="btn-row">
+            <a class="btn btn-secondary" href="#sea">바다로 돌려보내기</a>
+            <a class="btn btn-secondary" href="#write">나도 병 띄우기</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04-b 쓰레기 건짐 -->
+    <section class="screen screen-page screen-found" id="screen-found" data-route="found" hidden>
+      <header class="subbar">
+        <a class="icon-btn" href="#sea" aria-label="바다로 돌아가기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <h2>건진 것</h2>
+      </header>
+      <div class="page-body">
+        <div class="found-item" id="found-item"></div>
+        <div class="found-copy">
+          <p class="found-title" id="found-title"></p>
+          <p class="found-sub">이 바다엔 편지 말고도 많은 것들이 떠다녀요.</p>
+        </div>
+        <div class="collect-progress">
+          <div class="collect-row">
+            <span>수집품</span>
+            <span id="collect-count">0 / 10</span>
+          </div>
+          <div class="reel-bar"><div class="reel-fill" id="collect-fill"></div></div>
+        </div>
+        <div class="unlock-card" id="unlock-card" hidden>
+          <div class="unlock-bottle" id="unlock-bottle"></div>
+          <div>
+            <p class="unlock-title">꾸미기 재료 해금!</p>
+            <p class="unlock-name" id="unlock-name"></p>
+          </div>
+        </div>
+        <div class="page-actions">
+          <a class="btn btn-secondary" href="#archive?tab=collect">수집품 보기</a>
+          <a class="btn btn-primary" href="#sea">바다로 돌아가기</a>
+        </div>
       </div>
     </section>
 
@@ -83,6 +163,7 @@
     </section>
 
     <p class="demo-badge" id="demo-badge" hidden>체험 모드</p>
+    <p class="toast" id="toast" role="status" aria-live="polite" hidden></p>
   </div>
 
   <script type="module" src="js/app.js"></script>
