@@ -1,0 +1,269 @@
+# 유리병 편지 (bottle) — 작업 지시서
+
+Claude Code는 작업을 시작할 때마다 이 파일을 먼저 읽는다. 아래 내용과 다르게 만들고 싶으면 먼저 사용자(박상혁)에게 물어본다.
+
+## 0. 한 줄 요약
+
+지구온난화로 도시가 물에 잠긴 2100년. 그런데 화면은 조용하고 아름답다. 1인칭으로 바다를 바라보며, 떠다니는 유리병을 낚싯대로 건져 낯선 사람의 한 줄 글귀를 읽고, 나도 병을 꾸며 바다에 띄운다. 탄소중립 메시지는 설교하지 않고 세계관(잠긴 도시, 해수면 표기, 떠다니는 쓰레기)으로만 전한다.
+
+* 대상: 전국 대학생, 모바일 우선 (기준 폭 390px)
+* 목표: 2026-11-04(수)까지 실제 배포된 링크로 다른 사람들이 병을 건지고 띄울 수 있게 하기
+* 와이어프레임: https://www.figma.com/design/rfw9pQ1GI6ZgkXUjAIFAWj (화면 01~09, 레이어 이름이 곧 요소 이름)
+
+## 1. 기술 스택 (바꾸지 말 것)
+
+* 빌드 없는 정적 사이트: `index.html` + `style.css` + ES 모듈 JS. npm 빌드 단계 없음. 사용자가 개발 초보라 설치·빌드 문제를 피하는 게 최우선.
+* Firebase (프로젝트 이름: `bottle`)
+  * Firebase JS SDK 모듈 CDN(`https://www.gstatic.com/firebasejs/<버전>/...`), 작업 시점 최신 안정판으로 버전 고정
+  * Authentication: 익명 로그인만 (Google·이메일 로그인은 이번 범위 밖)
+  * Firestore: 병 데이터 저장. 위치는 `asia-northeast3`(서울) 권장
+* Vercel: GitHub 저장소 `bottle`을 연결해 push할 때마다 자동 배포. 정적 사이트라 Framework Preset은 `Other`, 빌드 명령 없음
+* 애니메이션: CSS + `requestAnimationFrame` + Web Animations API (외부 애니메이션 라이브러리 없이)
+* 폰트: Google Fonts — UI `Noto Sans KR`, 글귀용 `Nanum Pen Script`(손글씨) · `Gaegu`(둥근 손글씨) · `Nanum Gothic Coding`(타자기)
+
+### 비밀 정보 원칙
+
+* Firebase 웹 설정값(apiKey 등)은 원래 공개되는 값이라 `firebase-config.js`에 넣어도 된다. 보안은 Firestore 보안 규칙으로 지킨다.
+* 그 외 비밀 키(유료 API 키 등)는 이번 범위에서 쓰지 않는다. 절대 저장소에 커밋하지 않는다.
+
+## 2. 이번 범위
+
+### 넣는 것 (수요일까지)
+
+1. 1인칭 바다: 병들이 수평선에서 작게 생겨 천천히 다가오며 출렁임
+2. 낚시: 병 탭 → 낚싯줄이 포물선으로 날아감 → "걸렸어요!" → 꾹 누르는 동안 병이 끌려옴 → 다 끌면 편지 열림
+3. 편지 보기: 보낸 사람이 꾸민 병 + 글귀 + 떠다닌 일수, 카드 이미지 저장, 신고
+4. 글귀 쓰기(최대 100자, 글씨체 3종) → 병 꾸미기 → 띄우기
+5. 실제로 공유되는 바다(Firestore) + 익명 로그인
+6. 보관함: 건진 편지 / 띄운 병(몇 명이 건졌는지) / 수집품
+7. 떠다니는 쓰레기: 가끔 걸림 → 모으면 꾸미기 재료 해금
+8. 시간대 연동 하늘(낮·노을·밤), 바닷소리(파일 없이 Web Audio로 합성)
+9. 검열: 금칙어·연락처·링크 차단, 신고 3회 누적 시 숨김, 위기 문구 대응
+10. 체험 모드: Firebase 설정이 비어 있으면 localStorage로 동작
+
+### 빼는 것 (나중에)
+
+Google·이메일 로그인, 알림 메일, AI 검열, 서버 함수, 관리자 페이지
+
+## 3. 화면 명세 (Figma 번호와 동일)
+
+한 페이지 앱(SPA). 화면은 섹션을 전환하며, 뒤로 가기는 브라우저 history(`#sea`, `#letter` 등 해시)로 처리.
+
+### 01 1인칭 바다 (`#sea`, 시작 화면)
+
+* 상단 바: `2100년 · 해수면 +[N]m`(작은 글씨) / `잠긴 바다`(제목) / 소리 켜기·끄기 버튼 / 보관함 버튼 (각 44×44)
+* 장면(화면 거의 전체)
+  * 하늘(위 약 30%): 기기 현지 시각 기준 — 06~17시 낮, 17~19시 노을, 19~06시 밤(별, 달). 해/달 하나.
+  * 수평선 위 잠긴 도시 실루엣(건물 꼭대기만 보임)
+  * 바다: 물결 레이어 2~3겹이 서로 다른 속도로 좌우로 흐름
+  * 병: 동시에 6~8개. 깊이 `z`(0=수평선, 1=바로 앞)를 가진다.
+    * 화면 y = 수평선 + z^1.6 × 바다높이 × 0.85, 크기 = 0.15 + z × 1.0 배
+    * 좌우 위치는 원근에 맞춰 퍼짐: x = 중앙 + (lane − 0.5) × 폭 × (0.4 + z × 1.1)
+    * z는 초당 약 0.012씩 증가(천천히 다가옴). 1.05를 넘으면 사라지고 수평선에서 새로 생성
+    * 위아래 출렁임: sin 파형, 진폭은 크기에 비례
+  * 쓰레기: 생성되는 것 중 약 10%가 페트병·비닐·캔
+  * 낚싯대: 화면 오른쪽 아래에서 바다 쪽으로 뻗은 1인칭 SVG. 끝(Tip Ring) 위치를 기준점으로 쓴다. 대기 중엔 짧은 줄이 늘어져 있음
+* 하단: 안내 문구 `마음에 드는 병을 탭하면 바늘을 던져요` + 기본 버튼 `나도 병 띄우기`
+* 첫 방문 때만 짧은 안내 오버레이(탭하면 사라짐)
+* 바다가 비었을 때(병 0개): `아직 바다가 조용해요. 첫 병을 띄워보세요` 표시, 쓰레기만 가끔 떠다님
+
+### 02 바늘 던짐 · 걸림
+
+* 병(또는 쓰레기)을 탭하면 그 대상은 다가오기를 멈추고 출렁임만 유지
+* 낚싯대 끝 → 대상까지 2차 베지어 곡선으로 줄이 약 0.6초 동안 뻗어 나감(제어점은 두 점 중간보다 위쪽). 끝에 작은 바늘
+* 도착하면 물결 링 애니메이션 + `걸렸어요!` 말풍선 + 진동(지원 기기만, `navigator.vibrate`)
+* 하단: `꾹 누르고 있으면 끌어올려요` / `손을 떼면 병이 다시 멀어져요` / 기본 버튼 `꾹 눌러서 끌어올리기`, 작은 텍스트 버튼 `놓아주기`
+
+### 03 끌어올리는 중
+
+* 버튼을 누르고 있는 동안 진행률 p가 약 1.8초에 0→1로 증가, 떼면 약 3초 속도로 감소(0 미만 X)
+* 대상의 z = 걸린 시점 z + (1.25 − 걸린 시점 z) × easeOut(p) → 점점 커지며 화면 앞으로
+* 줄은 계속 낚싯대 끝 ↔ 대상 목 부분을 잇고, p가 클수록 팽팽(제어점 오프셋 감소)
+* 누르는 동안 낚싯대가 미세하게 떨림(회전 ±1.5° × p)
+* 진행률 바 + `끌어올리는 중… NN%`
+* p = 1 → 물보라 효과 → 병이면 04, 쓰레기면 04-b
+* PC 테스트를 위해 스페이스바 길게 누르기도 지원 (pointer 이벤트 기반으로 구현)
+
+### 04 건진 편지 (`#letter`)
+
+* 헤더 `건진 병`(뒤로)
+* 병 미리보기: 보낸 사람이 고른 모양·색·마개·넣을 것 그대로 렌더링
+* 편지 카드: 글귀(보낸 사람이 고른 글씨체), `N일 동안 떠다닌 병 · 밤에 띄워짐`(띄운 시각 기준), `신고하기`
+* 버튼: 기본 `카드로 저장하기` / 보조 `바다로 돌려보내기`(→01) · `나도 병 띄우기`(→05)
+* 건질 때: 남의 병이면 Firestore `catches` +1, 로컬 "건진 편지"에 저장(같은 병 중복 저장 X)
+* 자기가 띄운 병, 이미 건진 병, 숨김 병은 바다에 나오지 않음
+
+### 04-b 쓰레기 건짐
+
+* `병인 줄 알았는데 페트병이었어요`(종류별 문구: 페트병·비닐·녹슨 캔)
+* `이 바다엔 편지 말고도 많은 것들이 떠다녀요.`
+* 수집품 카운트 증가(localStorage), 진행률 `n / 10`
+* 해금 규칙: 쓰레기 3개 → 마개 `바다유리 장식`, 6개 → 넣을 것 `별모래`. 해금되는 순간 `꾸미기 재료 해금!` 카드
+* 버튼: `수집품 보기`(→09 수집품 탭) / `바다로 돌아가기`
+
+### 05 글귀 쓰기 (`#write`, 1/2)
+
+* 라벨 `누구에게든, 아무에게도 아닌 한 줄`, textarea 최대 100자, 글자 수 표시
+* placeholder `전하지 못한 말, 오늘의 마음, 2100년의 누군가에게…`
+* 글씨체 선택 3개(손글씨 / 둥근 손글씨 / 타자기) — textarea 글꼴에 즉시 반영
+* 안내 `실명, 연락처, SNS 아이디는 쓸 수 없어요. 자동 검토를 거친 뒤 바다에 떠요.`
+* `병에 담기` → 검열 통과 시 06, 실패 시 이유를 부드럽게 표시
+
+### 06 병 꾸미기 (2/2)
+
+* 큰 미리보기(선택 즉시 반영) + 아래 요약 텍스트
+* 탭: 모양 / 유리 색 / 마개 / 넣을 것. 탭마다 2열 카드 4개
+  * 모양: 둥근 와인병 · 작은 약병 · 우유병 · 잼 병
+  * 유리 색: 투명 `#e9f1f5` · 연두 `#cfe8c6` · 하늘 `#cfe3f3` · 호박색 `#ecd3a8`
+  * 마개: 코르크 · 왁스 봉인 · 리본 · 바다유리 장식(잠김)
+  * 넣을 것: 없음 · 말린 꽃 · 조개껍데기 · 별모래(잠김)
+  * 잠긴 항목은 흐리게 + `수집품으로 해금`, 누를 수 없음
+* 버튼: 보조 `그냥 띄우기`(기본값으로) / 기본 `바다로 띄우기`
+
+### 07 띄우기 완료
+
+* 병이 작아지며 수평선으로 멀어지는 애니메이션(바닷소리 잠깐 줄었다 복귀)
+* `병이 바다로 떠났어요` / `지금 이 기기에 기록됐어요`
+* 공유 카드 미리보기(9:16) + `• 내가 꾸민 병이 그대로 카드에 들어가요` `• 이름은 어디에도 안 보여요`
+* 안내 카드: `보관함에서 몇 명에게 닿았는지 볼 수 있어요` (알림 기능은 이번 범위 밖이라 08 화면은 만들지 않음)
+* 버튼: `스토리에 공유하기`(카드 이미지) / `이미지 저장` / `바다로 돌아가기`
+
+### 09 보관함 (`#archive`)
+
+* 탭: 건진 편지 / 띄운 병 / 수집품
+* 상단 배너: `지금은 이 기기에서만 보여요. 브라우저 데이터를 지우면 사라질 수 있어요.`
+* 건진 편지: 병 썸네일 + 글귀 앞부분 + 날짜, 누르면 04 형태로 다시 보기
+* 띄운 병: Firestore에서 `owner == 내 uid`로 조회, `N명에게 닿았어요` 또는 `아직 떠다니는 중` 배지
+* 수집품: 3열 그리드, 종류별 개수, 미발견은 `???`, 해금 현황
+
+## 4. 병 SVG
+
+* 하나의 함수 `bottleSVG({shape, color, cork, inside})`가 SVG 문자열을 만든다. viewBox `0 0 60 120`, 아래쪽 중앙 기준
+* 구성 레이어: 마개(Cork) / 목(Neck) / 몸통(Body, 유리 색, 약간 투명 + 흰 하이라이트) / 편지(Paper, 돌돌 만 종이) / 넣을 것
+* 바다, 편지 보기, 꾸미기, 보관함, 공유 카드가 모두 이 함수를 재사용
+* 마개 색: 코르크 `#b88a5a`, 왁스 `#b5523b`, 리본 `#5b8fc7`(목에 띠 + 매듭), 바다유리 `#8fd0c8`
+* 쓰레기 SVG도 같은 방식(페트병·비닐·캔)
+
+## 5. 데이터 (Firestore)
+
+컬렉션 `bottles`, 문서 하나 = 병 하나
+
+```
+text: string (1~100자)
+font: 'pen' | 'round' | 'mono'
+shape: 'wine' | 'vial' | 'milk' | 'jam'
+color: 'clear' | 'green' | 'sky' | 'amber'
+cork: 'cork' | 'wax' | 'ribbon' | 'seaglass'
+inside: 'none' | 'flower' | 'shell' | 'stardust'
+owner: string (익명 uid)
+catches: number (처음 0)
+reports: number (처음 0)
+hidden: boolean (처음 false)
+createdAt: serverTimestamp
+```
+
+* 바다에 띄울 병: `createdAt` 최신순 60개를 가져와 클라이언트에서 `hidden`·내 병·이미 건진 병을 걸러 무작위로 사용 (복합 인덱스 불필요)
+* 신고: `reports` +1, 결과가 3 이상이면 같은 쓰기에서 `hidden: true`. 같은 기기에서 같은 병 중복 신고 막기(localStorage)
+
+### 보안 규칙 (`firestore.rules`, 배포 전에 반드시 적용)
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /bottles/{id} {
+      allow read: if true;
+
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['text','font','shape','color','cork','inside','owner','catches','reports','hidden','createdAt'])
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 100
+        && request.resource.data.font in ['pen','round','mono']
+        && request.resource.data.shape in ['wine','vial','milk','jam']
+        && request.resource.data.color in ['clear','green','sky','amber']
+        && request.resource.data.cork in ['cork','wax','ribbon','seaglass']
+        && request.resource.data.inside in ['none','flower','shell','stardust']
+        && request.resource.data.catches == 0
+        && request.resource.data.reports == 0
+        && request.resource.data.hidden == false
+        && request.resource.data.createdAt == request.time;
+
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['catches','reports','hidden'])
+        && request.resource.data.catches in [resource.data.catches, resource.data.catches + 1]
+        && request.resource.data.reports in [resource.data.reports, resource.data.reports + 1]
+        && (request.resource.data.hidden == resource.data.hidden
+            || (request.resource.data.hidden == true && request.resource.data.reports >= 3));
+
+      allow delete: if false;
+    }
+  }
+}
+```
+
+알려진 한계(이번엔 감수): 같은 사람이 `catches`·`reports`를 여러 번 올릴 수 있음. 나중에 App Check나 사용자별 기록 컬렉션으로 보완.
+
+## 6. 검열 (`moderation.js`, 클라이언트)
+
+띄우기 전에 검사하고, 걸리면 저장하지 않는다.
+
+* 연락처·식별 정보: 휴대폰 번호(`01[016789]` 패턴, 공백·하이픈·점 변형 포함), 이메일, URL(`http`, `www.`, `.com` `.kr` `.net` 등), `@아이디`, `카톡`·`오픈채팅`·`인스타`·`dm` + 아이디처럼 보이는 문자열
+* 욕설·비하어 목록(자음 변형 포함, 예: ㅅㅂ 계열). 목록은 `moderation.js` 상단 배열로 관리해서 사용자가 직접 추가할 수 있게
+* 같은 글자 10번 이상 반복, 공백만 있는 글 차단
+* 위기 문구(예: 자살, 죽고 싶, 자해, 사라지고 싶 등)가 있으면 공개하지 않고, 꾸짖지 않는 톤으로 다음을 보여준다: `혹시 지금 많이 힘들다면, 혼자 견디지 않아도 괜찮아요. 자살예방상담전화 109에서 24시간 이야기를 들어줘요.` 그리고 `글 다시 쓰기` / `바다로 돌아가기` 버튼
+* 실패 메시지는 짧고 부드럽게 (예: `연락처나 링크는 바다에 띄울 수 없어요`)
+
+## 7. 그 밖의 기능
+
+* 바닷소리(`sound.js`): Web Audio로 브라운 노이즈 → 저역 통과 필터, 0.08~0.12Hz LFO로 파도 크기 변화 + 약한 바람(대역 통과 노이즈). 첫 사용자 동작 이후에만 재생. 켜기/끄기 상태 localStorage 저장. 기본값: 켜짐
+* 공유 카드(`card.js`): 1080×1920 canvas — 하늘·바다 그라데이션, 잠긴 도시 실루엣, 병 SVG, 글귀(선택한 글씨체, 자동 줄바꿈), 하단 작은 서비스 이름. `navigator.share`(파일 지원 시) 아니면 PNG 다운로드. 글꼴 로딩(`document.fonts.load`) 후 그리기
+* 체험 모드(`store.js`): `firebase-config.js`가 비어 있으면 localStorage 저장소로 동작하고, 화면 구석에 `체험 모드` 표시. 체험 모드에서만 예시 병 몇 개를 넣고 내용 끝에 `(예시)`를 붙인다. 실제 배포 Firestore에는 가짜 사용자 글을 넣지 않는다. 첫 병들은 운영자와 지인이 직접 띄운다.
+
+## 8. 디자인 기준
+
+* 색: 글자 `#1f2328`, 보조 글자 `#5b6370`, 테두리 `#c5cbd2`, 하늘(낮) `#eef2f6`, 바다(낮) `#d3dde6`, 주색 `#2f6f9f`, 주색 연한 배경 `#e3edf5`, 주색 진한 글자 `#1d4a6b`
+* 밤: 하늘 `#262b33`, 바다 `#36404c`, 글자 `#d6dbe1` / 노을은 낮과 밤 사이 따뜻한 그라데이션
+* 버튼: 기본 높이 52px·반경 14px·주색 / 보조 높이 48px·흰 배경·테두리
+* 터치 영역 최소 44×44, 글자 대비 4.5:1 이상, 아이콘 버튼엔 `aria-label`, 실제 `<button>`·`<a>` 사용
+* 이모지 쓰지 않음, 아이콘은 인라인 SVG
+* 데스크톱에서는 가운데 390~430px 폭의 폰 화면처럼 보이게, 바깥은 어두운 배경
+* `prefers-reduced-motion`이면 출렁임·물결을 약하게
+
+## 9. 파일 구조
+
+```
+index.html
+style.css
+firebase-config.js      # 사용자가 Firebase 웹 앱 설정값을 붙여 넣는 곳 (비어 있으면 체험 모드)
+firestore.rules
+js/app.js               # 화면 전환, 상태
+js/sea.js               # 바다 렌더링, 병 생성·이동, 낚시 인터랙션
+js/bottle.js            # 병·쓰레기 SVG 생성
+js/store.js             # Firebase / 체험 모드 저장소
+js/moderation.js
+js/sound.js
+js/card.js
+README.md               # 사용자가 따라 할 설정·배포 가이드(한국어, 초보자 기준)
+```
+
+## 10. 작업 순서 (단계마다 커밋 + push → Vercel 자동 배포로 확인)
+
+1. 빈 화면 배포: `index.html`에 "준비 중" 정도만 두고 push → Vercel 프로젝트 연결 → 주소가 열리는지 확인. (Vercel 연결이 가능하면 직접 하고, 안 되면 사용자에게 눌러야 할 곳을 알려준다)
+2. 바다 + 병 + 낚싯대: 01 화면, 병 생성·원근·출렁임, 시간대 하늘 (체험 모드 데이터로)
+3. 낚시 인터랙션: 02·03, 편지 열기 04, 쓰레기 04-b
+4. 쓰기·꾸미기·띄우기: 05·06·07, 병 SVG 전체 조합
+5. Firebase 연결: 웹 앱 등록, 익명 로그인 켜기, Firestore 생성, 보안 규칙 적용 → `firebase-config.js` 채우기 → 실제 데이터로 전환
+6. 보관함: 09
+7. 검열·신고, 바닷소리, 공유 카드
+8. 실기기 확인: 아이폰 Safari·안드로이드 Chrome에서 꾹 누르기, 소리, 스크롤 튐(바다 화면은 `touch-action: none`, 당겨서 새로고침 방지) 확인
+
+시간이 부족하면 7번 중 공유 카드 → 바닷소리 순으로 미룬다. 1~6은 수요일까지 반드시 완료.
+
+## 11. 사용자가 직접 해야 하는 일 (Claude가 대신할 수 없음)
+
+* 계정 로그인·권한 허용 (GitHub, Vercel, Firebase)
+* Firebase 콘솔 작업 중 Firebase 플러그인으로 처리할 수 없는 것이 있으면 Claude가 어디를 눌러야 하는지 단계별로 안내한다
+* 실제 폰에서 테스트하고 느낌 피드백하기
+* 첫 병 20~30개를 직접(또는 지인과) 띄워서 바다를 채우기
