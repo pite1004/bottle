@@ -155,10 +155,15 @@ function download(blob, name) {
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
-// how: 'share'(공유 시트 우선) | 'save'(다운로드 우선. 아이폰은 공유 시트의 "이미지 저장"이 더 자연스러워 공유 시트)
+// 웹페이지는 갤러리에 직접 저장할 수 없다.
+// 안드로이드: 다운로드하면 Download 폴더에 저장되고, 갤러리 앱의 Download 앨범에 나타난다.
+// 아이폰: 다운로드가 '파일' 앱으로 가서, 공유 시트의 "이미지 저장"(사진 앱)을 쓴다.
+// how: 'share'(공유 시트 우선) | 'save'(저장 우선)
 // 돌려주는 값: 'shared' | 'saved' | 'cancelled'
 export async function shareOrSave(blob, how) {
-  const file = new File([blob], 'bottle-letter.png', { type: 'image/png' });
+  const stamp = new Date().toISOString().slice(0, 19).replace(/\D/g, '');
+  const name = `bottle-letter-${stamp}.png`; // 저장할 때마다 이름이 달라 덮어쓰지 않게
+  const file = new File([blob], name, { type: 'image/png' });
   const canShare = navigator.canShare && navigator.canShare({ files: [file] });
   if (canShare && (how === 'share' || isIOS)) {
     try {
@@ -169,6 +174,6 @@ export async function shareOrSave(blob, how) {
       // 공유가 막히면 다운로드로
     }
   }
-  download(blob, 'bottle-letter.png');
+  download(blob, name);
   return 'saved';
 }

@@ -6,7 +6,8 @@ const APPROACH = 0.012;    // 초당 z 증가량
 const Z_END = 1.05;        // 이 값을 넘으면 사라짐
 const TRASH_RATE = 0.1;
 const MAX_FLOATERS = 7;
-const TAP_RADIUS = 30;     // 멀리 있는 작은 병도 누르기 쉽게 하는 최소 반경(px)
+const CATCH_RADIUS = 40;   // 바늘이 떨어진 곳에서 이 거리(px) 안에 있으면 걸린다. 가까운 큰 병은 더 넓게.
+const MISS_TIME = 0.9;     // 허탕일 때 바늘이 물에 머무는 시간(초)
 
 const CAST_TIME = 0.6;     // 줄이 뻗어 나가는 시간(초)
 const REEL_UP = 1 / 1.8;   // 누르고 있을 때 초당 진행률 증가
@@ -17,7 +18,6 @@ const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 
 export function createSea(scene, {
-  onTap = () => {},
   onEmptyChange = () => {},
   onHook = () => {},
   onProgress = () => {},
@@ -45,7 +45,8 @@ export function createSea(scene, {
   let last = 0;
   let time = 0;
   let wasEmpty = null;
-  let fish = null; // { f, phase: 'cast'|'hooked'|'landing', t, p, z0, lane0, holding }
+  // 낚시 상태. f는 걸린 대상(던지는 중·허탕이면 null), target은 바늘이 떨어질 곳
+  let fish = null; // { f, target, phase: 'cast'|'miss'|'hooked'|'landing', t, p, z0, lane0, holding }
 
   // ---------- 크기·낚싯대 ----------
   function layout() {
@@ -103,14 +104,16 @@ export function createSea(scene, {
     drawHook(endX, endY);
   }
 
-  // 낚시 중: 낚싯대 끝 ↔ 대상 목 부분을 잇는 2차 베지어
+  // 낚시 중: 낚싯대 끝 ↔ 바늘(걸렸으면 대상 목 부분)을 잇는 2차 베지어
   function drawFishLine(t0) {
     const f = fish.f;
-    const end = { x: f.x, y: f.y - 104 * f.s };
+    const end = f ? { x: f.x, y: f.y - 104 * f.s } : fish.target;
     const mid = { x: (t0.x + end.x) / 2, y: (t0.y + end.y) / 2 };
     const dist = Math.hypot(end.x - t0.x, end.y - t0.y);
-    // 던질 때는 높이 휘고, 팽팽해질수록 직선에 가깝게
-    const lift = fish.phase === 'cast' ? dist * 0.45 : dist * 0.22 * (1 - fish.p) + 2;
+    // 던질 때는 높이 휘고, 팽팽해질수록 직선에 가깝게. 허탕이면 느슨하게 처진다.
+    const lift = fish.phase === 'cast' ? dist * 0.45
+      : fish.phase === 'miss' ? -dist * 0.06
+      : dist * 0.22 * (1 - fish.p) + 2;
     const c = { x: mid.x, y: mid.y - lift };
     const k = fish.phase === 'cast' ? easeOut(Math.min(1, fish.t)) : 1;
     // 0~k 구간만 그리기 (de Casteljau)
@@ -212,7 +215,7 @@ export function createSea(scene, {
     };
     // 키보드(Enter/Space)로 누른 경우. 터치·마우스는 scene에서 가까운 병을 찾는다.
     el.addEventListener('click', (e) => {
-      if (e.detail === 0) tap(f);
+      if (e.detail === 0) castAt(f.x, f.y - 55 * f.s);
     });
     layer.appendChild(el);
     floaters.push(f);
@@ -262,27 +265,61 @@ export function createSea(scene, {
   }
 
   // ---------- 낚시 ----------
-  function tap(f) {
+  // 바다 어디든 탭한 곳으로 바늘을 던진다. 수평선 위를 탭하면 수평선 바로 아래로.
+  function castAt(x, y) {
     if (fish || !running) return;
-    onTap(f);
+    fish = {
+      f: null,
+      target: { x: Math.max(8, Math.min(W - 8, x)), y: Math.max(horizon + 6, Math.min(H - 8, y)) },
+      phase: 'cast', t: 0, p: 0, holding: false,
+    };
+  }
+
+  // 바늘이 떨어진 곳 근처에서 가장 가까운 병·쓰레기
+  function catchAt({ x, y }) {
+    let best = null, bestD = Infinity;
+    for (const f of floaters) {
+      const d = Math.hypot(x - f.x, y - (f.y - 55 * f.s)); // 병 몸통 가운데까지
+      if (d < Math.max(CATCH_RADIUS, 60 * f.s) && d < bestD) {
+        best = f;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  function hook(f) {
     f.held = true; // 다가오기를 멈추고 출렁임만 유지
-    fish = { f, phase: 'cast', t: 0, p: 0, z0: f.z, lane0: f.lane, holding: false };
+    Object.assign(fish, { f, phase: 'hooked', z0: f.z, lane0: f.lane });
+    ripple(f.x, f.y - 6 * f.s);
+    bubble(f.x, f.y - 120 * f.s - 12, '걸렸어요!');
+    if (navigator.vibrate) navigator.vibrate(40);
+    onHook(f);
   }
 
   function updateFish(dt) {
-    const f = fish.f;
     if (fish.phase === 'cast') {
       fish.t += dt / CAST_TIME;
       if (fish.t >= 1) {
-        fish.phase = 'hooked';
-        ripple(f.x, f.y - 6 * f.s);
-        bubble(f.x, f.y - 120 * f.s - 12);
-        if (navigator.vibrate) navigator.vibrate(40);
-        onHook(f);
+        const f = catchAt(fish.target);
+        if (f) {
+          hook(f);
+        } else {
+          fish.phase = 'miss';
+          fish.t = 0;
+          ripple(fish.target.x, fish.target.y);
+          bubble(fish.target.x, fish.target.y - 14, '아무것도 걸리지 않았어요', true);
+        }
       }
       return;
     }
+    if (fish.phase === 'miss') {
+      fish.t += dt;
+      if (fish.t >= MISS_TIME) fish = null; // 줄을 거둬들이고 다시 던질 수 있게
+      return;
+    }
     if (fish.phase !== 'hooked') return;
+    const f = fish.f;
     const before = fish.p;
     fish.p += fish.holding ? REEL_UP * dt : -REEL_DOWN * dt;
     fish.p = Math.max(0, Math.min(1, fish.p));
@@ -309,7 +346,7 @@ export function createSea(scene, {
   // 놓아주기: 다시 떠다니게 둔다
   function release() {
     if (!fish || fish.phase === 'landing') return;
-    fish.f.held = false;
+    if (fish.f) fish.f.held = false;
     fish = null;
     effects.innerHTML = '';
   }
@@ -333,10 +370,11 @@ export function createSea(scene, {
     }
   }
 
-  function bubble(x, y) {
+  function bubble(x, y, text, quiet = false) {
     const b = document.createElement('div');
-    b.className = 'hook-bubble';
-    b.textContent = '걸렸어요!';
+    b.className = quiet ? 'hook-bubble quiet' : 'hook-bubble';
+    b.textContent = text;
+    x = Math.max(90, Math.min(W - 90, x)); // 말풍선이 화면 밖으로 잘리지 않게
     b.style.left = `${x}px`;
     b.style.top = `${Math.max(36, y)}px`;
     effects.appendChild(b);
@@ -433,26 +471,10 @@ export function createSea(scene, {
     running = false;
   }
 
-  // ---------- 탭: 가장 가까운 병 찾기 ----------
-  function hitTest(px, py) {
-    let best = null, bestD = Infinity;
-    for (const f of floaters) {
-      const cy = f.y - 60 * f.s; // 병 가운데
-      const radius = Math.max(TAP_RADIUS, 50 * f.s);
-      const d = Math.hypot(px - f.x, py - cy);
-      if (d < radius && (d < bestD || (best && f.z > best.z && d < radius * 0.8))) {
-        best = f;
-        bestD = d;
-      }
-    }
-    return best;
-  }
-
+  // ---------- 탭: 탭한 곳으로 던지기 ----------
   scene.addEventListener('pointerup', (e) => {
-    if (fish) return;
     const r = scene.getBoundingClientRect();
-    const f = hitTest(e.clientX - r.left, e.clientY - r.top);
-    if (f) tap(f);
+    castAt(e.clientX - r.left, e.clientY - r.top);
   });
 
   new ResizeObserver(() => layout()).observe(scene);

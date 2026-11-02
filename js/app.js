@@ -132,13 +132,10 @@ function releaseFish() {
 }
 
 const sea = createSea($('scene'), {
-  onTap() {
-    holdBtn.disabled = true;
-    renderProgress(0);
-    showFishPanel(true);
-  },
   onHook() {
     holdBtn.disabled = false;
+    renderProgress(0);
+    showFishPanel(true);
   },
   onProgress: renderProgress,
   async onLanded(f) {
@@ -248,7 +245,11 @@ async function deliverCard(how) {
   try {
     const blob = await cardPromise;
     const result = await shareOrSave(blob, how);
-    if (result === 'saved') toast('카드 이미지를 저장했어요');
+    if (result === 'saved') {
+      toast(/Android/i.test(navigator.userAgent)
+        ? '저장했어요. 갤러리의 Download 앨범에서 볼 수 있어요'
+        : '카드 이미지를 저장했어요');
+    }
   } catch (err) {
     console.error(err);
     toast('카드를 만들지 못했어요. 다시 해 주세요');

@@ -522,6 +522,16 @@ h1, h2, p { margin: 0; }
   box-shadow: 0 4px 14px rgba(0, 0, 0, .12);
 }
 
+.hook-bubble.quiet {
+  padding: 5px 10px;
+  background: rgba(255, 255, 255, .88);
+  color: #4f5763;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.hook-bubble.quiet::after { background: rgba(255, 255, 255, .88); }
+
 .hook-bubble::after {
   content: "";
   position: absolute;
