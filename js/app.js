@@ -136,7 +136,8 @@ const sea = createSea($('scene'), {
   async onLanded(f) {
     showFishPanel(false);
     if (f.kind === 'bottle') {
-      await store.catchBottle(f.data);
+      // 건진 횟수 기록이 실패해도 편지는 보여 준다
+      store.catchBottle(f.data).catch((err) => console.error(err));
       showLetter(f.data);
       location.hash = 'letter';
       loadSea();
@@ -177,8 +178,13 @@ document.addEventListener('keyup', (e) => {
 $('release-btn').addEventListener('click', releaseFish);
 
 async function loadSea() {
-  const list = params.has('empty') ? [] : await store.listSeaBottles();
-  sea.setPool(list);
+  try {
+    const list = params.has('empty') ? [] : await store.listSeaBottles();
+    sea.setPool(list);
+  } catch (err) {
+    console.error(err);
+    toast('바다에 연결하지 못했어요. 잠시 뒤 다시 열어 주세요');
+  }
 }
 
 // ---------- 04 건진 편지 ----------
@@ -206,8 +212,13 @@ $('report-btn').addEventListener('click', async () => {
     return;
   }
   if (!confirm('이 병을 신고할까요?\n신고가 쌓이면 바다에서 사라져요.')) return;
-  await store.reportBottle(currentLetter.id);
-  toast('신고했어요. 알려 줘서 고마워요');
+  try {
+    await store.reportBottle(currentLetter.id);
+    toast('신고했어요. 알려 줘서 고마워요');
+  } catch (err) {
+    console.error(err);
+    toast('신고하지 못했어요. 잠시 뒤 다시 해 주세요');
+  }
 });
 
 $('save-card-btn').addEventListener('click', () => toast('카드 저장은 곧 열려요'));
@@ -333,8 +344,21 @@ $('deco-grid').addEventListener('click', (e) => {
   renderDecorate();
 });
 
+let launching = false;
+
 async function launch(chosenLook) {
-  const bottle = await store.createBottle({ text: draft.text, font: draft.font, ...chosenLook });
+  if (launching) return;
+  launching = true;
+  let bottle;
+  try {
+    bottle = await store.createBottle({ text: draft.text, font: draft.font, ...chosenLook });
+  } catch (err) {
+    console.error(err);
+    toast('병을 띄우지 못했어요. 잠시 뒤 다시 해 주세요');
+    return;
+  } finally {
+    launching = false;
+  }
   lastSent = bottle;
   draft.text = '';
   Object.assign(draft, DEFAULT_LOOK);
@@ -410,6 +434,12 @@ makeStars();
 renderSound(store.load('bottle.sound', true));
 setupIntro();
 renderWrite();
+try {
+  await store.init();
+} catch (err) {
+  console.error(err);
+  toast('바다에 연결하지 못했어요. 잠시 뒤 다시 열어 주세요');
+}
 await loadSea();
 window.addEventListener('hashchange', route);
 route();

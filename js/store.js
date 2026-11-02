@@ -1,8 +1,10 @@
 // 병 저장소. firebase-config.js가 비어 있으면 체험 모드(localStorage)로 동작한다.
-// Firebase 연결은 작업 순서 5단계에서 붙인다.
 import { firebaseConfig } from '../firebase-config.js';
 
 export const mode = firebaseConfig && firebaseConfig.apiKey ? 'firebase' : 'demo';
+
+// Firebase JS SDK (모듈 CDN). 버전을 올릴 땐 세 줄 모두 같이 바꾼다.
+const SDK = 'https://www.gstatic.com/firebasejs/13.1.0';
 
 const KEY = {
   uid: 'bottle.uid',
@@ -30,7 +32,30 @@ export function save(key, value) {
   }
 }
 
+// ---------- Firebase 준비 ----------
+let fb = null; // { db, uid, fs: Firestore 함수 모음 }
+
+// 앱 시작 때 한 번 부른다. Firebase 모드면 익명 로그인까지 마친다.
+export async function init() {
+  if (mode !== 'firebase' || fb) return;
+  const [{ initializeApp }, auth, fs] = await Promise.all([
+    import(`${SDK}/firebase-app.js`),
+    import(`${SDK}/firebase-auth.js`),
+    import(`${SDK}/firebase-firestore.js`),
+  ]);
+  const app = initializeApp(firebaseConfig);
+  const a = auth.getAuth(app);
+  const cred = a.currentUser ? { user: a.currentUser } : await auth.signInAnonymously(a);
+  fb = { db: fs.getFirestore(app), uid: cred.user.uid, fs };
+}
+
+// Firebase 모드인데 연결이 안 됐으면 체험 데이터로 넘어가지 않고 실패로 알린다.
+function ensureReady() {
+  if (mode === 'firebase' && !fb) throw new Error('Firebase에 연결되지 않았어요');
+}
+
 export function myUid() {
+  if (fb) return fb.uid;
   let id = load(KEY.uid, null);
   if (!id) {
     id = 'local-' + Math.random().toString(36).slice(2, 10);
@@ -39,6 +64,13 @@ export function myUid() {
   return id;
 }
 
+function fromDoc(d) {
+  const data = d.data();
+  const ts = data.createdAt;
+  return { ...data, id: d.id, createdAt: ts && ts.toMillis ? ts.toMillis() : Date.now() };
+}
+
+// ---------- 체험 모드 데이터 ----------
 const DAY = 24 * 60 * 60 * 1000;
 
 // 체험 모드에서만 쓰는 예시 병. 실제 Firestore에는 넣지 않는다.
@@ -74,45 +106,6 @@ function demoBottles() {
   return list;
 }
 
-export function caughtIds() {
-  return new Set(load(KEY.caught, []).map((c) => c.id));
-}
-
-export function mineIds() {
-  return new Set(load(KEY.mine, []));
-}
-
-// 바다에 띄울 병: 최신순 60개 중 숨김·내 병·이미 건진 병을 뺀다.
-export async function listSeaBottles() {
-  if (mode === 'firebase') {
-    console.warn('Firebase 연결은 아직 준비 중이라 체험 모드로 동작해요.');
-  }
-  const uid = myUid();
-  const caught = caughtIds();
-  const mine = mineIds();
-  return demoBottles()
-    .slice()
-    .sort((a, b) => b.createdAt - a.createdAt)
-    .slice(0, 60)
-    .filter((b) => !b.hidden && b.owner !== uid && !mine.has(b.id) && !caught.has(b.id));
-}
-
-// 띄우기: 새 병 저장 후, 이 기기의 "띄운 병" 목록에 id를 남긴다.
-export async function createBottle({ text, font, shape, color, cork, inside }) {
-  const bottle = {
-    id: 'local-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    text, font, shape, color, cork, inside,
-    owner: myUid(), catches: 0, reports: 0, hidden: false, createdAt: Date.now(),
-  };
-  const list = demoBottles();
-  list.push(bottle);
-  save(KEY.demo, list);
-  const mine = load(KEY.mine, []);
-  mine.push(bottle.id);
-  save(KEY.mine, mine);
-  return bottle;
-}
-
 function updateDemo(id, change) {
   const list = demoBottles();
   const b = list.find((x) => x.id === id);
@@ -122,28 +115,94 @@ function updateDemo(id, change) {
   return b;
 }
 
+export function caughtIds() {
+  return new Set(load(KEY.caught, []).map((c) => c.id));
+}
+
+export function mineIds() {
+  return new Set(load(KEY.mine, []));
+}
+
+// ---------- 바다 ----------
+// 바다에 띄울 병: 최신순 60개 중 숨김·내 병·이미 건진 병을 뺀다.
+export async function listSeaBottles() {
+  ensureReady();
+  let latest;
+  if (fb) {
+    const { collection, query, orderBy, limit, getDocs } = fb.fs;
+    const snap = await getDocs(query(collection(fb.db, 'bottles'), orderBy('createdAt', 'desc'), limit(60)));
+    latest = snap.docs.map(fromDoc);
+  } else {
+    latest = demoBottles().slice().sort((a, b) => b.createdAt - a.createdAt).slice(0, 60);
+  }
+  const uid = myUid();
+  const caught = caughtIds();
+  const mine = mineIds();
+  return latest.filter((b) => !b.hidden && b.owner !== uid && !mine.has(b.id) && !caught.has(b.id));
+}
+
+// 띄우기: 새 병 저장 후, 이 기기의 "띄운 병" 목록에 id를 남긴다.
+export async function createBottle({ text, font, shape, color, cork, inside }) {
+  ensureReady();
+  const fields = { text, font, shape, color, cork, inside, owner: myUid(), catches: 0, reports: 0, hidden: false };
+  let bottle;
+  if (fb) {
+    const { collection, addDoc, serverTimestamp } = fb.fs;
+    const ref = await addDoc(collection(fb.db, 'bottles'), { ...fields, createdAt: serverTimestamp() });
+    bottle = { ...fields, id: ref.id, createdAt: Date.now() };
+  } else {
+    bottle = { ...fields, id: 'local-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), createdAt: Date.now() };
+    const list = demoBottles();
+    list.push(bottle);
+    save(KEY.demo, list);
+  }
+  const mine = load(KEY.mine, []);
+  mine.push(bottle.id);
+  save(KEY.mine, mine);
+  return bottle;
+}
+
 // 건진 병: catches +1, 이 기기의 "건진 편지"에 저장(같은 병은 한 번만)
 export async function catchBottle(bottle) {
   const caught = load(KEY.caught, []);
   if (caught.some((c) => c.id === bottle.id)) return;
-  if (bottle.owner !== myUid()) updateDemo(bottle.id, (b) => { b.catches += 1; });
   const { id, text, font, shape, color, cork, inside, createdAt } = bottle;
   caught.unshift({ id, text, font, shape, color, cork, inside, createdAt, caughtAt: Date.now() });
   save(KEY.caught, caught);
+  if (bottle.owner === myUid()) return;
+  ensureReady();
+  if (fb) {
+    const { doc, updateDoc, increment } = fb.fs;
+    await updateDoc(doc(fb.db, 'bottles', id), { catches: increment(1) });
+  } else {
+    updateDemo(id, (b) => { b.catches += 1; });
+  }
 }
 
 export function hasReported(id) {
   return load(KEY.reported, []).includes(id);
 }
 
-// 신고: reports +1, 3 이상이면 숨김. 같은 기기에서 같은 병은 한 번만.
+// 신고: reports +1, 결과가 3 이상이면 같은 쓰기에서 숨김. 같은 기기에서 같은 병은 한 번만.
 export async function reportBottle(id) {
   const reported = load(KEY.reported, []);
   if (reported.includes(id)) return false;
-  updateDemo(id, (b) => {
-    b.reports += 1;
-    if (b.reports >= 3) b.hidden = true;
-  });
+  ensureReady();
+  if (fb) {
+    const { doc, runTransaction } = fb.fs;
+    const ref = doc(fb.db, 'bottles', id);
+    await runTransaction(fb.db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const reports = (snap.data().reports || 0) + 1;
+      tx.update(ref, reports >= 3 ? { reports, hidden: true } : { reports });
+    });
+  } else {
+    updateDemo(id, (b) => {
+      b.reports += 1;
+      if (b.reports >= 3) b.hidden = true;
+    });
+  }
   reported.push(id);
   save(KEY.reported, reported);
   return true;

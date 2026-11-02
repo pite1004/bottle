@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /bottles/{id} {
+      allow read: if true;
+
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['text','font','shape','color','cork','inside','owner','catches','reports','hidden','createdAt'])
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 100
+        && request.resource.data.font in ['pen','round','mono']
+        && request.resource.data.shape in ['wine','vial','milk','jam']
+        && request.resource.data.color in ['clear','green','sky','amber']
+        && request.resource.data.cork in ['cork','wax','ribbon','seaglass']
+        && request.resource.data.inside in ['none','flower','shell','stardust']
+        && request.resource.data.catches == 0
+        && request.resource.data.reports == 0
+        && request.resource.data.hidden == false
+        && request.resource.data.createdAt == request.time;
+
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['catches','reports','hidden'])
+        && request.resource.data.catches in [resource.data.catches, resource.data.catches + 1]
+        && request.resource.data.reports in [resource.data.reports, resource.data.reports + 1]
+        && (request.resource.data.hidden == resource.data.hidden
+            || (request.resource.data.hidden == true && request.resource.data.reports >= 3));
+
+      allow delete: if false;
+    }
+  }
+}
