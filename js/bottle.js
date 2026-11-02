@@ -16,6 +16,40 @@ const CORK = {
 
 const GLASS_EDGE = '#8a98a5';
 
+// 꾸미기 선택지 (06 화면). locked는 수집품으로 해금되는 항목.
+export const OPTIONS = {
+  shape: [
+    { value: 'wine', label: '둥근 와인병' },
+    { value: 'vial', label: '작은 약병' },
+    { value: 'milk', label: '우유병' },
+    { value: 'jam', label: '잼 병' },
+  ],
+  color: [
+    { value: 'clear', label: '투명' },
+    { value: 'green', label: '연두' },
+    { value: 'sky', label: '하늘' },
+    { value: 'amber', label: '호박색' },
+  ],
+  cork: [
+    { value: 'cork', label: '코르크' },
+    { value: 'wax', label: '왁스 봉인' },
+    { value: 'ribbon', label: '리본' },
+    { value: 'seaglass', label: '바다유리 장식', locked: true },
+  ],
+  inside: [
+    { value: 'none', label: '없음' },
+    { value: 'flower', label: '말린 꽃' },
+    { value: 'shell', label: '조개껍데기' },
+    { value: 'stardust', label: '별모래', locked: true },
+  ],
+};
+
+export const DEFAULT_LOOK = { shape: 'wine', color: 'clear', cork: 'cork', inside: 'none' };
+
+export function optionLabel(part, value) {
+  return OPTIONS[part].find((o) => o.value === value)?.label || '';
+}
+
 // mouth: 입구 y, neck: 목 좌우 x, body: 몸통 상자(종이·넣을 것 배치용), hl: 하이라이트 선
 const SHAPES = {
   wine: {

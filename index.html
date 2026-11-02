@@ -148,6 +148,101 @@
       </div>
     </section>
 
+    <!-- 05 글귀 쓰기 (1/2) -->
+    <section class="screen screen-page" id="screen-write" data-route="write" hidden>
+      <header class="subbar">
+        <a class="icon-btn" href="#sea" aria-label="바다로 돌아가기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <h2>글귀 쓰기</h2>
+        <span class="step">1 / 2</span>
+      </header>
+      <form class="page-body" id="write-form" novalidate>
+        <label class="field-label" for="write-text">누구에게든, 아무에게도 아닌 한 줄</label>
+        <div class="paper">
+          <textarea id="write-text" class="font-pen" maxlength="100" rows="4"
+            placeholder="전하지 못한 말, 오늘의 마음, 2100년의 누군가에게…"></textarea>
+          <p class="counter"><span id="write-count">0</span> / 100</p>
+        </div>
+
+        <fieldset class="font-pick">
+          <legend class="field-label">글씨체</legend>
+          <div class="font-options" id="font-options">
+            <button type="button" class="font-option font-pen" data-font="pen" aria-pressed="true">손글씨</button>
+            <button type="button" class="font-option font-round" data-font="round" aria-pressed="false">둥근 손글씨</button>
+            <button type="button" class="font-option font-mono" data-font="mono" aria-pressed="false">타자기</button>
+          </div>
+        </fieldset>
+
+        <p class="notice">실명, 연락처, SNS 아이디는 쓸 수 없어요. 자동 검토를 거친 뒤 바다에 떠요.</p>
+        <p class="form-error" id="write-error" role="alert" hidden></p>
+
+        <div class="page-actions">
+          <button class="btn btn-primary" type="submit">병에 담기</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- 06 병 꾸미기 (2/2) -->
+    <section class="screen screen-page" id="screen-decorate" data-route="decorate" hidden>
+      <header class="subbar">
+        <a class="icon-btn" href="#write" aria-label="글귀 쓰기로 돌아가기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <h2>병 꾸미기</h2>
+        <span class="step">2 / 2</span>
+      </header>
+      <div class="page-body">
+        <div class="deco-preview" id="deco-preview"></div>
+        <p class="deco-summary" id="deco-summary"></p>
+        <div class="tabs" role="tablist" aria-label="꾸밀 부분">
+          <button type="button" role="tab" class="tab" data-part="shape" aria-selected="true">모양</button>
+          <button type="button" role="tab" class="tab" data-part="color" aria-selected="false">유리 색</button>
+          <button type="button" role="tab" class="tab" data-part="cork" aria-selected="false">마개</button>
+          <button type="button" role="tab" class="tab" data-part="inside" aria-selected="false">넣을 것</button>
+        </div>
+        <div class="deco-grid" id="deco-grid" role="tabpanel"></div>
+        <div class="page-actions btn-row">
+          <button class="btn btn-secondary" type="button" id="launch-plain-btn">그냥 띄우기</button>
+          <button class="btn btn-primary" type="button" id="launch-btn">바다로 띄우기</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07 띄우기 완료 -->
+    <section class="screen screen-page" id="screen-sent" data-route="sent" hidden>
+      <div class="page-body sent-body">
+        <div class="sent-scene" aria-hidden="true">
+          <div class="sent-sea"></div>
+          <div class="sent-bottle" id="sent-bottle"></div>
+        </div>
+        <div class="sent-copy">
+          <h2>병이 바다로 떠났어요</h2>
+          <p>지금 이 기기에 기록됐어요</p>
+        </div>
+        <div class="share-row">
+          <div class="share-card" id="share-card" aria-label="공유 카드 미리보기">
+            <div class="share-sky"></div>
+            <div class="share-bottle" id="share-bottle"></div>
+            <p class="share-text" id="share-text"></p>
+            <p class="share-brand">유리병 편지</p>
+          </div>
+          <ul class="share-notes">
+            <li>내가 꾸민 병이 그대로 카드에 들어가요</li>
+            <li>이름은 어디에도 안 보여요</li>
+          </ul>
+        </div>
+        <p class="info-card">보관함에서 몇 명에게 닿았는지 볼 수 있어요</p>
+        <div class="page-actions">
+          <button class="btn btn-primary" type="button" id="share-btn">스토리에 공유하기</button>
+          <div class="btn-row">
+            <button class="btn btn-secondary" type="button" id="save-img-btn">이미지 저장</button>
+            <a class="btn btn-secondary" href="#sea">바다로 돌아가기</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- 아직 만들지 않은 화면 -->
     <section class="screen screen-soon" id="screen-soon" data-route="soon" hidden>
       <header class="subbar">

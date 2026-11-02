@@ -97,6 +97,22 @@ export async function listSeaBottles() {
     .filter((b) => !b.hidden && b.owner !== uid && !mine.has(b.id) && !caught.has(b.id));
 }
 
+// 띄우기: 새 병 저장 후, 이 기기의 "띄운 병" 목록에 id를 남긴다.
+export async function createBottle({ text, font, shape, color, cork, inside }) {
+  const bottle = {
+    id: 'local-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    text, font, shape, color, cork, inside,
+    owner: myUid(), catches: 0, reports: 0, hidden: false, createdAt: Date.now(),
+  };
+  const list = demoBottles();
+  list.push(bottle);
+  save(KEY.demo, list);
+  const mine = load(KEY.mine, []);
+  mine.push(bottle.id);
+  save(KEY.mine, mine);
+  return bottle;
+}
+
 function updateDemo(id, change) {
   const list = demoBottles();
   const b = list.find((x) => x.id === id);
