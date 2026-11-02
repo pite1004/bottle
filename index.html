@@ -3,25 +3,88 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#eef2f6">
   <title>유리병 편지</title>
-  <style>
-    html, body { margin: 0; height: 100%; }
-    body {
-      display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(#eef2f6 0%, #eef2f6 35%, #d3dde6 35%, #d3dde6 100%);
-      color: #1f2328;
-      font-family: "Noto Sans KR", system-ui, sans-serif;
-      text-align: center;
-    }
-    p { margin: 4px 0; }
-    .sub { color: #5b6370; font-size: 14px; }
-  </style>
+  <meta name="description" content="2100년, 잠긴 바다에서 낯선 사람의 한 줄을 건지고 나도 병을 띄워요.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Nanum+Pen+Script&family=Gaegu:wght@400;700&family=Nanum+Gothic+Coding&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main>
-    <p class="sub">2100년 · 잠긴 바다</p>
-    <h1>유리병 편지</h1>
-    <p>준비 중이에요.</p>
-  </main>
+  <div id="app" data-time="day">
+
+    <!-- 01 1인칭 바다 -->
+    <section class="screen screen-sea" id="screen-sea" data-route="sea">
+      <header class="topbar">
+        <div class="topbar-title">
+          <p class="topbar-sub">2100년 · 해수면 +<span id="sea-level">1.1</span>m</p>
+          <h1>잠긴 바다</h1>
+        </div>
+        <button class="icon-btn" id="sound-btn" type="button" aria-label="바닷소리 끄기" aria-pressed="true">
+          <svg class="icon-sound-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <svg class="icon-sound-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <a class="icon-btn" href="#archive" aria-label="보관함">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v3H4zM5.5 10.5h13V19H5.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 13.5h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </a>
+      </header>
+
+      <div class="scene" id="scene">
+        <div class="sky">
+          <div class="stars" aria-hidden="true"></div>
+          <div class="sun" aria-hidden="true"></div>
+          <div class="moon" aria-hidden="true"></div>
+        </div>
+        <svg class="city" aria-hidden="true" preserveAspectRatio="xMidYMax slice"></svg>
+        <div class="sea">
+          <div class="wave wave-1" aria-hidden="true"></div>
+          <div class="wave wave-2" aria-hidden="true"></div>
+          <div class="wave wave-3" aria-hidden="true"></div>
+        </div>
+        <div class="floaters"></div>
+        <svg class="rod" aria-hidden="true">
+          <path class="rod-line"/>
+          <path class="rod-shaft"/>
+          <path class="rod-grip"/>
+          <g class="rod-rings"></g>
+          <circle class="rod-tip" r="2.4"/>
+        </svg>
+        <p class="sea-empty" id="sea-empty" hidden>아직 바다가 조용해요. 첫 병을 띄워보세요</p>
+      </div>
+
+      <footer class="bottom">
+        <p class="hint">마음에 드는 병을 탭하면 바늘을 던져요</p>
+        <a class="btn btn-primary" href="#write">나도 병 띄우기</a>
+      </footer>
+
+      <div class="intro" id="intro" hidden>
+        <button class="intro-card" type="button" id="intro-close">
+          <span class="intro-year">2100년</span>
+          <span class="intro-text">바다가 도시를 덮었어요.<br>그 위로 누군가의 한 줄을 담은 병들이 떠다녀요.</span>
+          <span class="intro-text">마음에 드는 병을 탭해 건져 보세요.</span>
+          <span class="intro-tap">화면을 탭하면 시작해요</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 아직 만들지 않은 화면 -->
+    <section class="screen screen-soon" id="screen-soon" data-route="soon" hidden>
+      <header class="subbar">
+        <a class="icon-btn" href="#sea" aria-label="바다로 돌아가기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <h2 id="soon-title">준비 중</h2>
+      </header>
+      <div class="soon-body">
+        <p>이 화면은 곧 만들어져요.</p>
+        <a class="btn btn-secondary" href="#sea">바다로 돌아가기</a>
+      </div>
+    </section>
+
+    <p class="demo-badge" id="demo-badge" hidden>체험 모드</p>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>
