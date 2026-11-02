@@ -2,6 +2,8 @@
 import { createSea } from './sea.js';
 import { bottleSVG, trashSVG, TRASH_NAMES, OPTIONS, DEFAULT_LOOK, optionLabel } from './bottle.js';
 import { checkText } from './moderation.js';
+import { renderCard, shareOrSave } from './card.js';
+import * as sound from './sound.js';
 import * as store from './store.js';
 
 const app = document.getElementById('app');
@@ -213,6 +215,7 @@ function showLetter(b, from = 'sea') {
   text.textContent = b.text;
   text.className = `letter-text font-${b.font}`;
   $('letter-meta').textContent = letterMeta(b.createdAt);
+  prepareCard(b);
 }
 
 $('report-btn').addEventListener('click', async () => {
@@ -231,7 +234,28 @@ $('report-btn').addEventListener('click', async () => {
   }
 });
 
-$('save-card-btn').addEventListener('click', () => toast('카드 저장은 곧 열려요'));
+// ---------- 공유 카드 ----------
+// 아이폰은 버튼을 누른 직후에만 공유 시트를 열 수 있어서, 화면을 열 때 미리 그려 둔다.
+let cardPromise = null;
+
+function prepareCard(b) {
+  cardPromise = renderCard(b, app.dataset.time);
+  cardPromise.catch((err) => console.error(err));
+}
+
+async function deliverCard(how) {
+  if (!cardPromise) return;
+  try {
+    const blob = await cardPromise;
+    const result = await shareOrSave(blob, how);
+    if (result === 'saved') toast('카드 이미지를 저장했어요');
+  } catch (err) {
+    console.error(err);
+    toast('카드를 만들지 못했어요. 다시 해 주세요');
+  }
+}
+
+$('save-card-btn').addEventListener('click', () => deliverCard('save'));
 
 // ---------- 04-b 쓰레기 ----------
 const FOUND_TITLE = {
@@ -284,7 +308,13 @@ writeText.addEventListener('input', () => {
   draftReady = false;
   $('write-count').textContent = String(draft.text.length);
   writeError.hidden = true;
+  $('crisis').hidden = true;
   saveDraft();
+});
+
+$('crisis-rewrite').addEventListener('click', () => {
+  $('crisis').hidden = true;
+  writeText.focus();
 });
 
 $('font-options').addEventListener('click', (e) => {
@@ -298,6 +328,11 @@ $('font-options').addEventListener('click', (e) => {
 $('write-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const result = checkText(draft.text);
+  $('crisis').hidden = !result.crisis;
+  if (result.crisis) {
+    writeError.hidden = true;
+    return;
+  }
   if (!result.ok) {
     writeError.textContent = result.reason;
     writeError.hidden = false;
@@ -376,6 +411,7 @@ async function launch(chosenLook) {
   saveDraft();
   renderWrite();
   renderSent(bottle);
+  sound.dip();
   location.replace('#sent');
   loadSea();
 }
@@ -390,6 +426,7 @@ function renderSent(b) {
   const text = $('share-text');
   text.textContent = b.text;
   text.className = `share-text font-${b.font}`;
+  prepareCard(b);
 }
 
 // 병이 작아지며 수평선으로 멀어진다
@@ -404,8 +441,8 @@ function playSent() {
   );
 }
 
-$('share-btn').addEventListener('click', () => toast('카드 공유는 곧 열려요'));
-$('save-img-btn').addEventListener('click', () => toast('이미지 저장은 곧 열려요'));
+$('share-btn').addEventListener('click', () => deliverCard('share'));
+$('save-img-btn').addEventListener('click', () => deliverCard('save'));
 
 // ---------- 09 보관함 ----------
 const ARCHIVE_TABS = ['caught', 'sent', 'collect'];
@@ -527,6 +564,7 @@ soundBtn.addEventListener('click', () => {
   const on = soundBtn.getAttribute('aria-pressed') !== 'true';
   store.save('bottle.sound', on);
   renderSound(on);
+  sound.setEnabled(on);
 });
 
 // ---------- 첫 방문 안내 ----------
@@ -550,6 +588,7 @@ applyTime();
 setInterval(applyTime, 60 * 1000);
 makeStars();
 renderSound(store.load('bottle.sound', true));
+sound.setup(store.load('bottle.sound', true));
 setupIntro();
 renderWrite();
 window.addEventListener('hashchange', route);

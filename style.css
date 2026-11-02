@@ -819,6 +819,21 @@ h1, h2, p { margin: 0; }
 
 .form-error[hidden] { display: none; }
 
+.crisis {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--primary-soft);
+  color: var(--primary-ink);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.crisis[hidden] { display: none; }
+.crisis a[href^="tel"] { color: inherit; font-weight: 700; }
+
 /* ---------- 06 병 꾸미기 ---------- */
 .deco-preview {
   display: grid;
