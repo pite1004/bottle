@@ -3,6 +3,7 @@ import { createSea } from './sea.js';
 import { bottleSVG, trashSVG, TRASH_NAMES, OPTIONS, DEFAULT_LOOK, optionLabel } from './bottle.js';
 import { checkText } from './moderation.js';
 import { renderCard, shareOrSave } from './card.js';
+import { createStory } from './intro.js';
 import * as sound from './sound.js';
 import * as store from './store.js';
 
@@ -568,21 +569,49 @@ soundBtn.addEventListener('click', () => {
   sound.setEnabled(on);
 });
 
-// ---------- 첫 방문 안내 ----------
-function setupIntro() {
-  const intro = $('intro');
-  if (store.load('bottle.seenIntro', false)) return;
-  intro.hidden = false;
-  intro.addEventListener('click', () => {
-    intro.hidden = true;
-    store.save('bottle.seenIntro', true);
-  });
+// ---------- 00 인트로 ----------
+const story = createStory({
+  app,
+  onStart() {
+    store.save('bottle.seenStory', true);
+    sound.defer(false); // "이야기 들어보기"·"건너뛰기"를 누른 이 탭에서 바닷소리를 켠다
+  },
+});
+
+function playStory() {
+  if (location.hash && location.hash !== '#sea') location.hash = 'sea';
+  sound.defer(true);
+  story.play();
 }
 
+// ---------- 상단 바 메뉴 ----------
+const menuBtn = $('menu-btn');
+const topMenu = $('top-menu');
+
+function setMenu(open) {
+  topMenu.hidden = !open;
+  menuBtn.setAttribute('aria-expanded', String(open));
+}
+
+menuBtn.addEventListener('click', () => setMenu(topMenu.hidden));
+document.addEventListener('click', (e) => {
+  if (!topMenu.hidden && !e.target.closest('.menu-wrap')) setMenu(false);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !topMenu.hidden) {
+    setMenu(false);
+    menuBtn.focus();
+  }
+});
+$('replay-story-btn').addEventListener('click', () => {
+  setMenu(false);
+  playStory();
+});
+
 // ---------- 시작 ----------
-// 바다를 아래로 당겨 새로고침되는 것 막기
+// 바다·인트로를 아래로 당겨 새로고침되는 것 막기
 document.addEventListener('touchmove', (e) => {
-  if (e.target.closest('.scene, .bottom-fish')) e.preventDefault();
+  if (e.target.closest('.scene, .bottom-fish, .story')) e.preventDefault();
 }, { passive: false });
 
 applyTime();
@@ -590,10 +619,11 @@ setInterval(applyTime, 60 * 1000);
 makeStars();
 renderSound(store.load('bottle.sound', true));
 sound.setup(store.load('bottle.sound', true));
-setupIntro();
 renderWrite();
 window.addEventListener('hashchange', route);
 route();
+// 처음 방문이고 바다로 들어올 때만 인트로를 자동 재생
+if (!store.load('bottle.seenStory', false) && !screens.sea.hidden) playStory();
 await loadSea();
 seaReady = true;
 if (!screens.sea.hidden) sea.start();

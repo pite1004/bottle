@@ -8,6 +8,7 @@ let ctx = null;
 let master = null;
 let enabled = true;
 let unlocked = false;
+let deferred = false; // 인트로 동안에는 탭해도 켜지 않는다 ("이야기 들어보기"에서 시작)
 
 function noiseBuffer(c, seconds, brown) {
   const len = Math.floor(c.sampleRate * seconds);
@@ -100,9 +101,21 @@ function apply() {
 // 폰 브라우저는 손가락을 "뗄 때"(pointerup·touchend·click)만 재생을 허락하고,
 // 다른 앱에 갔다 오면 소리를 멈춰 두기 때문에 한 번만 시도하면 안 된다.
 function onGesture() {
+  if (deferred) return;
   unlocked = true;
   if (!enabled) return;
   if (!ctx || ctx.state !== 'running') apply();
+}
+
+// 인트로가 도는 동안 true. false로 풀 때는 사용자 동작(클릭) 안에서 불러야 바로 소리가 난다.
+export function defer(on) {
+  deferred = on;
+  if (on) {
+    if (ctx) fadeTo(0, 0.4);
+  } else {
+    onGesture();
+    if (ctx && enabled) fadeTo(VOLUME, 2);
+  }
 }
 
 export function setup(initialOn) {

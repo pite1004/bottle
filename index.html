@@ -28,6 +28,14 @@
         <a class="icon-btn" href="#archive" aria-label="보관함">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v3H4zM5.5 10.5h13V19H5.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 13.5h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </a>
+        <div class="menu-wrap">
+          <button class="icon-btn" id="menu-btn" type="button" aria-label="메뉴" aria-haspopup="true" aria-expanded="false" aria-controls="top-menu">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="18.5" cy="12" r="1.7" fill="currentColor"/></svg>
+          </button>
+          <div class="menu" id="top-menu" hidden>
+            <button type="button" class="menu-item" id="replay-story-btn">처음 이야기 다시 보기</button>
+          </div>
+        </div>
       </header>
 
       <div class="scene" id="scene">
@@ -76,14 +84,6 @@
         </div>
       </footer>
 
-      <div class="intro" id="intro" hidden>
-        <button class="intro-card" type="button" id="intro-close">
-          <span class="intro-year">2100년</span>
-          <span class="intro-text">바다가 도시를 덮었어요.<br>그 위로 누군가의 한 줄을 담은 병들이 떠다녀요.</span>
-          <span class="intro-text">병 근처로 바늘을 던져 건져 보세요.</span>
-          <span class="intro-tap">화면을 탭하면 시작해요</span>
-        </button>
-      </div>
     </section>
 
     <!-- 04 건진 편지 -->
@@ -282,6 +282,39 @@
         <p>이 화면은 곧 만들어져요.</p>
         <a class="btn btn-secondary" href="#sea">바다로 돌아가기</a>
       </div>
+    </section>
+
+    <!-- 00 인트로 (3인칭 장면) -->
+    <section class="story" id="story" aria-label="처음 이야기" hidden>
+      <div class="story-world" id="story-world">
+        <div class="story-sky">
+          <div class="story-sun"></div>
+        </div>
+        <svg class="story-city" id="story-city" aria-hidden="true" preserveAspectRatio="xMidYMax slice"></svg>
+        <div class="story-sea">
+          <div class="story-glow"></div>
+        </div>
+        <div class="story-bottles" id="story-bottles" aria-hidden="true"></div>
+        <div class="story-boat" id="story-boat" aria-hidden="true">
+          <svg viewBox="0 0 120 80">
+            <!-- 사람 (앉은 실루엣) -->
+            <circle cx="62" cy="20" r="7"/>
+            <path d="M54 30 Q62 25 70 30 L72 50 L52 50 Z"/>
+            <path d="M70 34 L82 44 L80 47 L68 39 Z"/>
+            <!-- 배 -->
+            <path d="M8 50 L112 50 Q106 66 92 70 L28 70 Q14 66 8 50 Z"/>
+            <path d="M14 55 L106 55" stroke="#000" stroke-opacity=".15" stroke-width="2"/>
+          </svg>
+          <div class="story-wake"></div>
+        </div>
+      </div>
+
+      <div class="story-text" aria-live="polite">
+        <p class="story-line" id="story-line"></p>
+        <button class="btn btn-primary story-start" id="story-start" type="button" hidden>이야기 들어보기</button>
+      </div>
+
+      <button class="story-skip" id="story-skip" type="button">건너뛰기</button>
     </section>
 
     <p class="demo-badge" id="demo-badge" hidden>체험 모드</p>
