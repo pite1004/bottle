@@ -100,12 +100,16 @@
         <a class="icon-btn" href="#sea" id="letter-back" aria-label="바다로 돌아가기">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
-        <h2>건진 병</h2>
+        <h2 id="letter-title">건진 병</h2>
+        <button class="icon-btn star-btn" id="star-btn" type="button" aria-pressed="false" aria-label="마음에 남은 편지로 표시">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        </button>
       </header>
       <div class="page-body">
         <div class="letter-bottle" id="letter-bottle"></div>
-        <article class="letter-card">
+        <article class="letter-card" id="letter-card">
           <p class="letter-text" id="letter-text"></p>
+          <p class="letter-from" id="letter-from" hidden>바다로부터</p>
           <div class="letter-meta">
             <p id="letter-meta"></p>
             <button class="btn-text btn-report" id="report-btn" type="button">신고하기</button>
@@ -269,12 +273,37 @@
       </header>
       <div class="page-body">
         <p class="banner">지금은 이 기기에서만 보여요. 브라우저 데이터를 지우면 사라질 수 있어요.</p>
+        <a class="record-entry" href="#record">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V9M10 19V5M15 19v-7M20 19v-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <span class="record-entry-text"><strong>나의 바다 기록</strong><small>지금까지 건진 것들을 한눈에</small></span>
+          <svg class="record-entry-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
         <div class="tabs tabs-3" role="tablist" aria-label="보관함">
           <button type="button" role="tab" class="tab" data-tab="caught" aria-selected="true">건진 편지</button>
           <button type="button" role="tab" class="tab" data-tab="sent" aria-selected="false">띄운 병</button>
           <button type="button" role="tab" class="tab" data-tab="collect" aria-selected="false">수집품</button>
         </div>
         <div class="archive-panel" id="archive-panel" role="tabpanel"></div>
+      </div>
+    </section>
+
+    <!-- 나의 바다 기록 -->
+    <section class="screen screen-page" id="screen-record" data-route="record" hidden>
+      <header class="subbar">
+        <a class="icon-btn" href="#archive" aria-label="보관함으로 돌아가기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <h2>나의 바다 기록</h2>
+      </header>
+      <div class="page-body">
+        <dl class="record-list" id="record-list"></dl>
+        <figure class="record-quote" id="record-quote" hidden>
+          <figcaption>마음에 남은 편지</figcaption>
+          <blockquote id="record-quote-text"></blockquote>
+        </figure>
+        <div class="page-actions">
+          <button class="btn btn-primary" type="button" id="record-save">기록 카드 저장하기</button>
+        </div>
       </div>
     </section>
 

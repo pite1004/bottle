@@ -141,6 +141,94 @@ export async function renderCard(bottle, time = 'day') {
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
 }
 
+// 나의 바다 기록 카드: stats [{ label, value }], quote(별표 친 편지, 없으면 null). 이름·아이디는 넣지 않는다.
+export async function renderRecordCard(stats, quote, time = 'day') {
+  const pal = PALETTE[time] || PALETTE.day;
+  const qf = quote ? FONT[quote.font] || FONT.pen : null;
+  await Promise.all([
+    document.fonts.load('700 64px "Noto Sans KR"', '나의 바다 기록'),
+    document.fonts.load('32px "Noto Sans KR"', '건진 편지'),
+    qf ? document.fonts.load(`${qf.size * 0.8}px "${qf.family}"`, quote.text) : null,
+  ]).catch(() => {});
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  let g = ctx.createLinearGradient(0, 0, 0, HORIZON);
+  g.addColorStop(0, pal.sky[0]);
+  g.addColorStop(1, pal.sky[1]);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, HORIZON);
+  g = ctx.createLinearGradient(0, HORIZON, 0, H);
+  g.addColorStop(0, pal.sea[0]);
+  g.addColorStop(1, pal.sea[1]);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, HORIZON, W, H - HORIZON);
+  drawCity(ctx, pal.city);
+
+  // 제목
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = pal.ink;
+  ctx.font = '700 64px "Noto Sans KR"';
+  ctx.fillText('나의 바다 기록', W / 2, 260);
+  ctx.fillStyle = pal.sub;
+  ctx.font = '30px "Noto Sans KR"';
+  ctx.fillText('2100년 · 잠긴 바다에서', W / 2, 340);
+
+  // 2열 기록 칸 (수평선을 걸쳐 놓아서 아래에 인용 칸 자리를 넉넉히 남긴다)
+  const top = 440;
+  const boxW = (W - 160 - 30) / 2;
+  const boxH = 190;
+  stats.forEach((s, i) => {
+    const x = 80 + (i % 2) * (boxW + 30);
+    const y = top + Math.floor(i / 2) * (boxH + 30);
+    ctx.fillStyle = 'rgba(255,255,255,.88)';
+    roundRect(ctx, x, y, boxW, boxH, 32);
+    ctx.fill();
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#5b6370';
+    ctx.font = '30px "Noto Sans KR"';
+    ctx.fillText(s.label, x + 36, y + 58);
+    ctx.fillStyle = '#1d4a6b';
+    ctx.font = '700 60px "Noto Sans KR"';
+    ctx.fillText(s.value, x + 36, y + 128);
+  });
+
+  // 마음에 남은 편지
+  if (quote) {
+    const y0 = top + Math.ceil(stats.length / 2) * (boxH + 30) + 10;
+    const size = qf.size * 0.8;
+    ctx.font = `${size}px "${qf.family}"`;
+    const lines = wrap(ctx, quote.text, 780).slice(0, 4);
+    const lineH = size * qf.line;
+    const h = lines.length * lineH + 130;
+    ctx.fillStyle = 'rgba(251,247,236,.94)';
+    roundRect(ctx, 80, y0, W - 160, h, 32);
+    ctx.fill();
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#6b5a40';
+    ctx.font = '28px "Noto Sans KR"';
+    ctx.fillText('마음에 남은 편지', 120, y0 + 52);
+    ctx.fillStyle = '#2a2620';
+    ctx.font = `${size}px "${qf.family}"`;
+    ctx.textAlign = 'center';
+    lines.forEach((line, i) => ctx.fillText(line, W / 2, y0 + 100 + lineH * (i + 0.5)));
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = pal.ink;
+  ctx.font = '700 34px "Noto Sans KR"';
+  ctx.fillText('유리병 편지', W / 2, H - 120);
+  ctx.fillStyle = pal.sub;
+  ctx.font = '28px "Noto Sans KR"';
+  ctx.fillText('2100년 · 잠긴 바다', W / 2, H - 74);
+
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+}
+
 const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent)
   || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 

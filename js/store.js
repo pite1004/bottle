@@ -160,6 +160,18 @@ export function listCaught() {
   return load(KEY.caught, []);
 }
 
+// 별표 (마음에 남은 편지)
+export function isStarred(id) {
+  return load('bottle.starred', []).includes(id);
+}
+
+export function toggleStar(id) {
+  const list = load('bottle.starred', []);
+  const on = !list.includes(id);
+  save('bottle.starred', on ? [...list, id] : list.filter((x) => x !== id));
+  return on;
+}
+
 // 내가 띄운 병: owner == 내 uid. 정렬은 클라이언트에서 (복합 인덱스 불필요)
 export async function listMyBottles() {
   await ensureReady();

@@ -38,6 +38,7 @@ export function createSea(scene, {
   let butt = { x: 0, y: 0 };
   let tip = { x: 0, y: 0 };
   let pool = [];
+  let special = []; // 바다가 보낸 병 (일반 병보다 먼저 떠내려온다)
   let queue = [];
   let floaters = [];
   let spawnTimer = 0;
@@ -159,10 +160,22 @@ export function createSea(scene, {
     // 이미 건진 병 등 목록에서 빠진 병이 화면에 남아 있으면 치운다.
     const ids = new Set(pool.map((b) => b.id));
     for (const f of floaters.slice()) {
-      if (f.kind === 'bottle' && !ids.has(f.data.id) && (!fish || fish.f !== f)) remove(f);
+      if (f.kind === 'bottle' && !f.data.special && !ids.has(f.data.id) && (!fish || fish.f !== f)) remove(f);
     }
     if (!running) return;
     checkEmpty();
+  }
+
+  // 바다가 보낸 병 목록. 새로 생기면 곧바로 수평선에서 떠내려오게 한다.
+  function setSpecial(list) {
+    const before = new Set(special.map((s) => s.id));
+    special = list.slice();
+    if (special.some((s) => !before.has(s.id))) spawnTimer = Math.min(spawnTimer, 1.5);
+  }
+
+  function nextSpecial() {
+    const onScreen = new Set(floaters.map((f) => f.data.id));
+    return special.find((s) => !onScreen.has(s.id)) || null;
   }
 
   function checkEmpty() {
@@ -191,9 +204,9 @@ export function createSea(scene, {
   }
 
   function spawn(z) {
-    let kind = Math.random() < TRASH_RATE || pool.length === 0 ? 'trash' : 'bottle';
-    let data = null;
-    if (kind === 'bottle') {
+    let data = nextSpecial();
+    let kind = data ? 'bottle' : Math.random() < TRASH_RATE || pool.length === 0 ? 'trash' : 'bottle';
+    if (kind === 'bottle' && !data) {
       data = nextBottle();
       if (!data) kind = 'trash';
     }
@@ -201,8 +214,9 @@ export function createSea(scene, {
 
     const el = document.createElement('button');
     el.type = 'button';
-    el.className = 'floater';
-    el.setAttribute('aria-label', kind === 'bottle' ? '떠다니는 유리병 건지기' : '떠다니는 무언가 건지기');
+    el.className = data.special ? 'floater special' : 'floater';
+    el.setAttribute('aria-label', data.special ? '은은하게 빛나는 병 건지기'
+      : kind === 'bottle' ? '떠다니는 유리병 건지기' : '떠다니는 무언가 건지기');
     el.innerHTML = kind === 'bottle' ? bottleSVG(data) : trashSVG(data.trash);
 
     const f = {
@@ -432,7 +446,9 @@ export function createSea(scene, {
     }
 
     spawnTimer -= dt;
-    if (floaters.length < targetCount() && spawnTimer <= 0) {
+    // 바다가 보낸 병은 바다가 가득 차 있어도 한 자리 더 비집고 들어온다
+    const room = targetCount() + (special.length ? 1 : 0);
+    if (floaters.length < room && spawnTimer <= 0) {
       spawn(0);
       // 깊이가 고르게 퍼지도록 간격을 둔다. 비었을 땐 더 드물게.
       const gap = (1 / APPROACH) / targetCount();
@@ -483,6 +499,7 @@ export function createSea(scene, {
     start,
     stop,
     setPool,
+    setSpecial,
     hold,
     release,
     get busy() { return !!fish; },

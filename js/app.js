@@ -2,9 +2,10 @@
 import { createSea } from './sea.js';
 import { bottleSVG, trashSVG, TRASH_NAMES, OPTIONS, DEFAULT_LOOK, optionLabel } from './bottle.js';
 import { checkText } from './moderation.js';
-import { renderCard, shareOrSave } from './card.js';
+import { renderCard, renderRecordCard, shareOrSave } from './card.js';
 import { createStory } from './intro.js';
 import { createCoach, coachSeen, flyTo, bounce } from './guide.js';
+import { checkMilestones, pendingSeaBottles, receive, listReceived, seaBottle } from './seasent.js';
 import * as sound from './sound.js';
 import * as store from './store.js';
 
@@ -63,6 +64,7 @@ const screens = {
   decorate: $('screen-decorate'),
   sent: $('screen-sent'),
   archive: $('screen-archive'),
+  record: $('screen-record'),
   soon: $('screen-soon'),
 };
 
@@ -91,6 +93,7 @@ function route() {
   if (target === 'soon') $('soon-title').textContent = SOON_TITLES[name];
   if (target === 'decorate') renderDecorate();
   if (target === 'sent') playSent();
+  if (target === 'record') renderRecord();
   if (target === 'archive') {
     clearArchiveNews();
     const tab = new URLSearchParams(location.hash.split('?')[1] || '').get('tab');
@@ -152,17 +155,26 @@ const sea = createSea($('scene'), {
   async onLanded(f) {
     showFishPanel(false);
     addArchiveNew();
-    if (f.kind === 'bottle') {
+    if (f.data.special) {
+      // 바다가 보낸 병: 이 기기에만 기록 (Firestore에 저장하지 않음)
+      receive(f.data.special);
+      const got = listReceived().find((r) => r.key === f.data.special);
+      showLetter(seaBottle(f.data.special, got && got.receivedAt));
+      location.hash = 'letter';
+      sea.setSpecial(pendingSeaBottles());
+    } else if (f.kind === 'bottle') {
       // 건진 횟수 기록이 실패해도 편지는 보여 준다
       store.catchBottle(f.data).catch((err) => console.error(err));
       queueCoach('caught');
       showLetter(f.data);
       location.hash = 'letter';
       loadSea();
+      checkSeaGifts();
     } else {
       queueCoach('trash');
       showFound(f.data.trash, store.addTrash(f.data.trash));
       location.hash = 'found';
+      checkSeaGifts();
     }
   },
   onEmptyChange(empty) {
@@ -237,13 +249,46 @@ function showLetter(b, from = 'sea') {
   const back = $('letter-back');
   back.href = from === 'archive' ? '#archive' : '#sea';
   back.setAttribute('aria-label', from === 'archive' ? '보관함으로 돌아가기' : '바다로 돌아가기');
+  const fromSea = !!b.special;
+  $('letter-title').textContent = fromSea ? '바다가 보낸 병' : '건진 병';
+  $('letter-card').classList.toggle('from-sea', fromSea);
+  $('letter-bottle').classList.toggle('from-sea', fromSea);
+  $('letter-from').hidden = !fromSea;
+  $('report-btn').hidden = fromSea;
+  $('star-btn').hidden = fromSea;
   $('letter-bottle').innerHTML = bottleSVG(b);
   const text = $('letter-text');
-  text.textContent = b.text;
   text.className = `letter-text font-${b.font}`;
-  $('letter-meta').textContent = letterMeta(b.createdAt);
+  if (fromSea) {
+    // 문장이 한 줄씩 나타난다
+    text.innerHTML = b.lines.map((l) => `<span>${esc(l)}</span>`).join('');
+    [...text.children].forEach((span, i) => {
+      span.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }],
+        { duration: 900, delay: 400 + i * 1300, easing: 'ease-out', fill: 'backwards' });
+    });
+    $('letter-meta').textContent = `바다가 보낸 병 · ${formatDate(b.receivedAt || Date.now())}`;
+  } else {
+    text.textContent = b.text;
+    $('letter-meta').textContent = letterMeta(b.createdAt);
+    renderStar();
+  }
   prepareCard(b);
 }
+
+// ---------- 별표 (마음에 남은 편지) ----------
+function renderStar() {
+  const on = !!currentLetter && store.isStarred(currentLetter.id);
+  const btn = $('star-btn');
+  btn.setAttribute('aria-pressed', String(on));
+  btn.setAttribute('aria-label', on ? '마음에 남은 편지 표시 빼기' : '마음에 남은 편지로 표시');
+}
+
+$('star-btn').addEventListener('click', () => {
+  if (!currentLetter || currentLetter.special) return;
+  const on = store.toggleStar(currentLetter.id);
+  renderStar();
+  toast(on ? '마음에 남은 편지로 표시했어요' : '표시를 뺐어요');
+});
 
 $('report-btn').addEventListener('click', async () => {
   if (!currentLetter) return;
@@ -498,20 +543,62 @@ function renderArchive(tab) {
   else renderCollect();
 }
 
+const STAR_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/></svg>';
+
 function renderCaught() {
   const list = store.listCaught();
+  const fromSea = listReceived();
+  const view = store.load('bottle.caughtView', 'list');
+  let html = '';
+
+  // 바다가 보낸 병은 맨 위에 따로
+  if (fromSea.length) {
+    html += `<p class="section-title">바다가 보낸 병</p>` + fromSea.map((r) => {
+      const b = seaBottle(r.key, r.receivedAt);
+      return `<button type="button" class="archive-item from-sea" data-sea="${r.key}">
+        <span class="archive-thumb">${bottleSVG(b)}</span>
+        <span class="archive-main">
+          <span class="archive-text">${esc(b.lines[0])}</span>
+          <span class="archive-date">${formatDate(r.receivedAt)} · 바다로부터</span>
+        </span>
+      </button>`;
+    }).join('');
+  }
+
   if (list.length === 0) {
-    archivePanel.innerHTML = `<div class="archive-empty">아직 건진 편지가 없어요.<br>바다에서 떠다니는 병을 탭해보세요<a class="btn btn-primary" href="#sea">바다로 가기</a></div>`;
+    html += `<div class="archive-empty">아직 건진 편지가 없어요.<br>바다에서 떠다니는 병을 탭해보세요<a class="btn btn-primary" href="#sea">바다로 가기</a></div>`;
+    archivePanel.innerHTML = html;
     return;
   }
-  archivePanel.innerHTML = list.map((b) => `
-    <button type="button" class="archive-item" data-id="${esc(b.id)}">
-      <span class="archive-thumb">${bottleSVG(b)}</span>
-      <span class="archive-main">
-        <span class="archive-text">${esc(b.text)}</span>
-        <span class="archive-date">${formatDate(b.caughtAt)}에 건짐</span>
-      </span>
-    </button>`).join('');
+
+  html += `<div class="view-toggle" role="group" aria-label="보기 방식">
+    <button type="button" data-view="list" aria-pressed="${view === 'list'}">목록</button>
+    <button type="button" data-view="shelf" aria-pressed="${view === 'shelf'}">선반</button>
+  </div>`;
+
+  if (view === 'shelf') {
+    // 먼저 건진 것부터, 한 칸에 5개
+    const ordered = list.slice().sort((a, b) => a.caughtAt - b.caughtAt);
+    let rows = '';
+    for (let i = 0; i < ordered.length; i += 5) {
+      rows += `<div class="shelf-row"><div class="shelf-items">${ordered.slice(i, i + 5).map((b) => `
+        <button type="button" class="shelf-bottle" data-id="${esc(b.id)}" aria-label="${esc(b.text.slice(0, 30))} (${formatDate(b.caughtAt)}에 건짐)">
+          ${bottleSVG(b)}${store.isStarred(b.id) ? `<span class="shelf-star">${STAR_SVG}</span>` : ''}
+        </button>`).join('')}</div><div class="shelf-plank"></div></div>`;
+    }
+    html += `<div class="shelf">${rows}</div>`;
+  } else {
+    html += list.map((b) => `
+      <button type="button" class="archive-item" data-id="${esc(b.id)}">
+        <span class="archive-thumb">${bottleSVG(b)}</span>
+        <span class="archive-main">
+          <span class="archive-text">${esc(b.text)}</span>
+          <span class="archive-date">${formatDate(b.caughtAt)}에 건짐</span>
+        </span>
+        ${store.isStarred(b.id) ? `<span class="archive-star" aria-label="마음에 남은 편지">${STAR_SVG}</span>` : ''}
+      </button>`).join('');
+  }
+  archivePanel.innerHTML = html;
 }
 
 async function renderSentList() {
@@ -579,13 +666,75 @@ document.querySelector('#screen-archive .tabs').addEventListener('click', (e) =>
 });
 
 archivePanel.addEventListener('click', (e) => {
-  const item = e.target.closest('button.archive-item');
+  const toggle = e.target.closest('.view-toggle button');
+  if (toggle) {
+    store.save('bottle.caughtView', toggle.dataset.view);
+    renderCaught();
+    return;
+  }
+  const item = e.target.closest('button.archive-item, button.shelf-bottle');
   if (!item) return;
-  const b = store.listCaught().find((c) => c.id === item.dataset.id);
-  if (!b) return;
-  showLetter(b, 'archive');
+  if (item.dataset.sea) {
+    const r = listReceived().find((x) => x.key === item.dataset.sea);
+    if (r) showLetter(seaBottle(r.key, r.receivedAt), 'archive');
+  } else {
+    const b = store.listCaught().find((c) => c.id === item.dataset.id);
+    if (!b) return;
+    showLetter(b, 'archive');
+  }
   location.hash = 'letter';
 });
+
+// ---------- 나의 바다 기록 ----------
+function recordStats(reached) {
+  const caught = store.listCaught();
+  const n = caught.length;
+  const days = caught.map((b) => Math.floor((b.caughtAt - b.createdAt) / DAY)).filter((d) => d >= 0);
+  const colors = {};
+  for (const b of caught) colors[b.color] = (colors[b.color] || 0) + 1;
+  const topColor = Object.entries(colors).sort((a, b) => b[1] - a[1])[0];
+  const night = caught.filter((b) => timeOfDay(new Date(b.caughtAt).getHours()) === 'night').length;
+  return [
+    { label: '건진 편지', value: `${n}통` },
+    { label: '건져낸 쓰레기', value: `${store.trashTotal()}개` },
+    { label: '가장 오래 떠다닌 병', value: days.length ? `${Math.max(...days)}일` : '—' },
+    { label: '가장 많이 만난 유리', value: topColor ? optionLabel('color', topColor[0]) : '—' },
+    { label: '밤에 건진 편지', value: n ? `${Math.round((night / n) * 100)}%` : '—' },
+    { label: '내 병이 닿은 사람', value: reached == null ? '…' : `${reached}명` },
+  ];
+}
+
+let recordQuote = null;
+
+function drawRecord(reached) {
+  const stats = recordStats(reached);
+  $('record-list').innerHTML = stats.map((s) => `<div><dt>${s.label}</dt><dd>${s.value}</dd></div>`).join('');
+  const fig = $('record-quote');
+  fig.hidden = !recordQuote;
+  if (recordQuote) {
+    const q = $('record-quote-text');
+    q.textContent = recordQuote.text;
+    q.className = `font-${recordQuote.font}`;
+  }
+  cardPromise = renderRecordCard(stats, recordQuote, app.dataset.time);
+  cardPromise.catch((err) => console.error(err));
+}
+
+async function renderRecord() {
+  // 별표 친 편지 중 하나 (화면을 열 때마다 하나를 고른다. 없으면 생략)
+  const starred = store.listCaught().filter((b) => store.isStarred(b.id));
+  recordQuote = starred.length ? starred[Math.floor(Math.random() * starred.length)] : null;
+  drawRecord(store.load('bottle.catchTotal', null));
+  try {
+    const mine = await store.listMyBottles();
+    const total = mine.reduce((sum, b) => sum + (b.catches || 0), 0);
+    if (!screens.record.hidden) drawRecord(total);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+$('record-save').addEventListener('click', () => deliverCard('save'));
 
 // ---------- 소리 버튼 (재생은 7단계 sound.js) ----------
 const soundBtn = $('sound-btn');
@@ -743,6 +892,17 @@ setInterval(() => {
   coach.show('idle', () => (sea.floaters.includes(near) ? near.el.getBoundingClientRect() : null), 'above');
 }, 1000);
 
+// ---------- 바다가 보낸 병 ----------
+// 조건(쓰레기 5개, 편지 5·10통, 내 병이 처음 닿음)을 처음 채우면 빛나는 병을 바다에 띄운다
+function checkSeaGifts() {
+  checkMilestones({
+    letters: store.listCaught().length,
+    trash: store.trashTotal(),
+    reached: store.load('bottle.catchTotal', 0) || 0,
+  });
+  sea.setSpecial(pendingSeaBottles());
+}
+
 // ---------- 사용법 안내: 재방문 소식 ----------
 // 내 병들의 catches 합계가 지난번보다 늘었으면 알려 준다
 const newsBanner = $('news-banner');
@@ -759,6 +919,7 @@ async function checkNews() {
   const total = mine.reduce((sum, b) => sum + (b.catches || 0), 0);
   const prev = store.load('bottle.catchTotal', null);
   store.save('bottle.catchTotal', total);
+  checkSeaGifts();
   if (prev === null || total <= prev) return;
   store.save('bottle.newsDot', true);
   renderArchiveBadge();
@@ -798,5 +959,6 @@ route();
 if (!store.load('bottle.seenStory', false) && !screens.sea.hidden) playStory();
 await loadSea();
 seaReady = true;
+checkSeaGifts(); // 지난번에 조건을 채웠지만 아직 못 건진 병도 다시 떠내려온다
 if (!screens.sea.hidden) sea.start();
 checkNews();
