@@ -115,8 +115,13 @@ const reel = $('reel');
 
 function showFishPanel(on) {
   bottom.classList.toggle('fishing', on);
+  app.classList.toggle('fishing', on);
   fishPanel.hidden = !on;
-  if (!on) setHolding(false);
+  if (!on) {
+    holdBtn.disabled = true; // 다음에 걸릴 때까지 꾹 누르기 꺼 둠
+    holdPointer = null;
+    setHolding(false);
+  }
 }
 
 function renderProgress(p) {
@@ -165,17 +170,32 @@ const sea = createSea($('scene'), {
   },
 });
 
-// 꾹 누르기: 손가락·마우스 (pointer 이벤트)
-holdBtn.addEventListener('pointerdown', (e) => {
-  if (holdBtn.disabled) return;
+// 꾹 누르기: 걸려 있는 동안엔 화면 아무 데나 (손가락·마우스, pointer 이벤트)
+// "놓아주기"와 상단 바 버튼은 제외
+let holdPointer = null;
+
+function hooked() {
+  return !screens.sea.hidden && !fishPanel.hidden && !holdBtn.disabled;
+}
+
+app.addEventListener('pointerdown', (e) => {
+  if (!hooked() || holdPointer !== null) return;
+  if (e.target.closest('#release-btn, .topbar, .story')) return;
   e.preventDefault();
-  holdBtn.setPointerCapture(e.pointerId);
+  holdPointer = e.pointerId;
   setHolding(true);
 });
-for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
-  holdBtn.addEventListener(type, () => setHolding(false));
+for (const type of ['pointerup', 'pointercancel']) {
+  window.addEventListener(type, (e) => {
+    if (e.pointerId !== holdPointer) return;
+    holdPointer = null;
+    setHolding(false);
+  });
 }
-holdBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+// 길게 누를 때 뜨는 메뉴(복사·이미지 저장 등) 막기
+app.addEventListener('contextmenu', (e) => {
+  if (hooked()) e.preventDefault();
+});
 
 // 꾹 누르기: PC 스페이스바
 document.addEventListener('keydown', (e) => {
