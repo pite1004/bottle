@@ -1,6 +1,6 @@
 // 화면 전환과 앱 상태.
 import { createSea } from './sea.js';
-import { bottleSVG, trashSVG, OPTIONS, DEFAULT_LOOK, optionLabel } from './bottle.js';
+import { bottleSVG, trashSVG, TRASH_NAMES, OPTIONS, DEFAULT_LOOK, optionLabel } from './bottle.js';
 import { checkText } from './moderation.js';
 import * as store from './store.js';
 
@@ -49,7 +49,7 @@ function toast(msg) {
 }
 
 // ---------- 화면 전환 ----------
-const SOON_TITLES = { archive: '보관함' };
+const SOON_TITLES = {};
 
 const screens = {
   sea: $('screen-sea'),
@@ -58,11 +58,13 @@ const screens = {
   write: $('screen-write'),
   decorate: $('screen-decorate'),
   sent: $('screen-sent'),
+  archive: $('screen-archive'),
   soon: $('screen-soon'),
 };
 
 let currentLetter = null;
 let currentFound = null;
+let seaReady = false;
 let draftReady = false; // 검사를 통과한 글귀가 있어야 꾸미기로 갈 수 있다
 let lastSent = null;
 
@@ -84,8 +86,12 @@ function route() {
   if (target === 'soon') $('soon-title').textContent = SOON_TITLES[name];
   if (target === 'decorate') renderDecorate();
   if (target === 'sent') playSent();
+  if (target === 'archive') {
+    const tab = new URLSearchParams(location.hash.split('?')[1] || '').get('tab');
+    renderArchive(ARCHIVE_TABS.includes(tab) ? tab : 'caught');
+  }
   if (target === 'sea') {
-    sea.start();
+    if (seaReady) sea.start(); // 첫 병 목록을 받기 전엔 시작하지 않는다 (빈 바다 문구가 잠깐 뜨지 않게)
   } else {
     if (sea.busy) releaseFish();
     sea.stop();
@@ -196,8 +202,12 @@ function letterMeta(createdAt) {
   return `${drift} · ${LAUNCH_TIME[timeOfDay(new Date(createdAt).getHours())]}`;
 }
 
-function showLetter(b) {
+// from: 'sea'(방금 건짐) 또는 'archive'(보관함에서 다시 보기) — 뒤로 가기 위치
+function showLetter(b, from = 'sea') {
   currentLetter = b;
+  const back = $('letter-back');
+  back.href = from === 'archive' ? '#archive' : '#sea';
+  back.setAttribute('aria-label', from === 'archive' ? '보관함으로 돌아가기' : '바다로 돌아가기');
   $('letter-bottle').innerHTML = bottleSVG(b);
   const text = $('letter-text');
   text.textContent = b.text;
@@ -397,6 +407,114 @@ function playSent() {
 $('share-btn').addEventListener('click', () => toast('카드 공유는 곧 열려요'));
 $('save-img-btn').addEventListener('click', () => toast('이미지 저장은 곧 열려요'));
 
+// ---------- 09 보관함 ----------
+const ARCHIVE_TABS = ['caught', 'sent', 'collect'];
+const archivePanel = $('archive-panel');
+let archiveTab = 'caught';
+
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function formatDate(ms) {
+  const d = new Date(ms);
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function renderArchive(tab) {
+  archiveTab = tab;
+  for (const t of document.querySelectorAll('#screen-archive .tab')) {
+    t.setAttribute('aria-selected', String(t.dataset.tab === tab));
+  }
+  if (tab === 'caught') renderCaught();
+  else if (tab === 'sent') renderSentList();
+  else renderCollect();
+}
+
+function renderCaught() {
+  const list = store.listCaught();
+  if (list.length === 0) {
+    archivePanel.innerHTML = `<p class="archive-empty">아직 건진 편지가 없어요.<br>바다에서 마음에 드는 병을 건져 보세요.</p>`;
+    return;
+  }
+  archivePanel.innerHTML = list.map((b) => `
+    <button type="button" class="archive-item" data-id="${esc(b.id)}">
+      <span class="archive-thumb">${bottleSVG(b)}</span>
+      <span class="archive-main">
+        <span class="archive-text">${esc(b.text)}</span>
+        <span class="archive-date">${formatDate(b.caughtAt)}에 건짐</span>
+      </span>
+    </button>`).join('');
+}
+
+async function renderSentList() {
+  archivePanel.innerHTML = `<p class="archive-empty">불러오는 중…</p>`;
+  let list;
+  try {
+    list = await store.listMyBottles();
+  } catch (err) {
+    console.error(err);
+    if (archiveTab === 'sent') archivePanel.innerHTML = `<p class="archive-empty">띄운 병을 불러오지 못했어요.<br>잠시 뒤 다시 열어 주세요.</p>`;
+    return;
+  }
+  if (archiveTab !== 'sent') return; // 기다리는 사이 다른 탭으로 옮겼으면 그리지 않는다
+  if (list.length === 0) {
+    archivePanel.innerHTML = `<div class="archive-empty">아직 띄운 병이 없어요.<a class="btn btn-primary" href="#write">나도 병 띄우기</a></div>`;
+    return;
+  }
+  archivePanel.innerHTML = list.map((b) => `
+    <div class="archive-item">
+      <span class="archive-thumb">${bottleSVG(b)}</span>
+      <span class="archive-main">
+        <span class="archive-text">${esc(b.text)}</span>
+        <span class="archive-date">${formatDate(b.createdAt)}에 띄움</span>
+        ${b.catches > 0
+          ? `<span class="badge reached">${b.catches}명에게 닿았어요</span>`
+          : `<span class="badge">아직 떠다니는 중</span>`}
+      </span>
+    </div>`).join('');
+}
+
+function renderCollect() {
+  const counts = store.trashCounts();
+  const total = store.trashTotal(counts);
+  const shown = Math.min(total, store.TRASH_GOAL);
+  const cells = Object.keys(FOUND_TITLE).map((kind) => {
+    const n = counts[kind] || 0;
+    return `<div class="collect-cell${n ? '' : ' unknown'}">
+      ${trashSVG(kind)}
+      <span>${n ? TRASH_NAMES[kind] : '???'}</span>
+      <strong>${n ? `${n}개` : ''}</strong>
+    </div>`;
+  }).join('');
+  const unlocks = store.UNLOCKS.map((u) => {
+    const done = total >= u.at;
+    return `<li class="${done ? 'done' : ''}"><span>${u.name}</span><span>${done ? '해금됨' : `${u.at - total}개 더 모으면 해금`}</span></li>`;
+  }).join('');
+  archivePanel.innerHTML = `
+    <div class="collect-progress">
+      <div class="collect-row"><span>바다에서 건진 것</span><span>${shown} / ${store.TRASH_GOAL}</span></div>
+      <div class="reel-bar"><div class="reel-fill" style="width:${(shown / store.TRASH_GOAL) * 100}%"></div></div>
+    </div>
+    <div class="collect-grid">${cells}</div>
+    <p class="section-title">꾸미기 재료</p>
+    <ul class="unlock-list">${unlocks}</ul>`;
+}
+
+document.querySelector('#screen-archive .tabs').addEventListener('click', (e) => {
+  const t = e.target.closest('.tab');
+  if (!t) return;
+  history.replaceState(null, '', `#archive?tab=${t.dataset.tab}`);
+  renderArchive(t.dataset.tab);
+});
+
+archivePanel.addEventListener('click', (e) => {
+  const item = e.target.closest('button.archive-item');
+  if (!item) return;
+  const b = store.listCaught().find((c) => c.id === item.dataset.id);
+  if (!b) return;
+  showLetter(b, 'archive');
+  location.hash = 'letter';
+});
+
 // ---------- 소리 버튼 (재생은 7단계 sound.js) ----------
 const soundBtn = $('sound-btn');
 
@@ -434,12 +552,8 @@ makeStars();
 renderSound(store.load('bottle.sound', true));
 setupIntro();
 renderWrite();
-try {
-  await store.init();
-} catch (err) {
-  console.error(err);
-  toast('바다에 연결하지 못했어요. 잠시 뒤 다시 열어 주세요');
-}
-await loadSea();
 window.addEventListener('hashchange', route);
 route();
+await loadSea();
+seaReady = true;
+if (!screens.sea.hidden) sea.start();

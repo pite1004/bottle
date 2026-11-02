@@ -35,8 +35,20 @@ export function save(key, value) {
 // ---------- Firebase 준비 ----------
 let fb = null; // { db, uid, fs: Firestore 함수 모음 }
 
-// 앱 시작 때 한 번 부른다. Firebase 모드면 익명 로그인까지 마친다.
-export async function init() {
+let initPromise = null;
+
+// Firebase 모드면 SDK를 불러와 익명 로그인까지 마친다. 여러 번 불러도 한 번만 연결한다.
+export function init() {
+  if (!initPromise) {
+    initPromise = connect().catch((err) => {
+      initPromise = null; // 다음 호출 때 다시 시도
+      throw err;
+    });
+  }
+  return initPromise;
+}
+
+async function connect() {
   if (mode !== 'firebase' || fb) return;
   const [{ initializeApp }, auth, fs] = await Promise.all([
     import(`${SDK}/firebase-app.js`),
@@ -49,9 +61,11 @@ export async function init() {
   fb = { db: fs.getFirestore(app), uid: cred.user.uid, fs };
 }
 
-// Firebase 모드인데 연결이 안 됐으면 체험 데이터로 넘어가지 않고 실패로 알린다.
-function ensureReady() {
-  if (mode === 'firebase' && !fb) throw new Error('Firebase에 연결되지 않았어요');
+// 연결을 기다린다. Firebase 모드인데 연결이 안 되면 체험 데이터로 넘어가지 않고 실패로 알린다.
+async function ensureReady() {
+  if (mode !== 'firebase') return;
+  await init();
+  if (!fb) throw new Error('Firebase에 연결되지 않았어요');
 }
 
 export function myUid() {
@@ -126,7 +140,7 @@ export function mineIds() {
 // ---------- 바다 ----------
 // 바다에 띄울 병: 최신순 60개 중 숨김·내 병·이미 건진 병을 뺀다.
 export async function listSeaBottles() {
-  ensureReady();
+  await ensureReady();
   let latest;
   if (fb) {
     const { collection, query, orderBy, limit, getDocs } = fb.fs;
@@ -141,9 +155,29 @@ export async function listSeaBottles() {
   return latest.filter((b) => !b.hidden && b.owner !== uid && !mine.has(b.id) && !caught.has(b.id));
 }
 
+// 이 기기에서 건진 편지 (최근 것부터)
+export function listCaught() {
+  return load(KEY.caught, []);
+}
+
+// 내가 띄운 병: owner == 내 uid. 정렬은 클라이언트에서 (복합 인덱스 불필요)
+export async function listMyBottles() {
+  await ensureReady();
+  const uid = myUid();
+  let list;
+  if (fb) {
+    const { collection, query, where, getDocs } = fb.fs;
+    const snap = await getDocs(query(collection(fb.db, 'bottles'), where('owner', '==', uid)));
+    list = snap.docs.map(fromDoc);
+  } else {
+    list = demoBottles().filter((b) => b.owner === uid);
+  }
+  return list.sort((a, b) => b.createdAt - a.createdAt);
+}
+
 // 띄우기: 새 병 저장 후, 이 기기의 "띄운 병" 목록에 id를 남긴다.
 export async function createBottle({ text, font, shape, color, cork, inside }) {
-  ensureReady();
+  await ensureReady();
   const fields = { text, font, shape, color, cork, inside, owner: myUid(), catches: 0, reports: 0, hidden: false };
   let bottle;
   if (fb) {
@@ -170,7 +204,7 @@ export async function catchBottle(bottle) {
   caught.unshift({ id, text, font, shape, color, cork, inside, createdAt, caughtAt: Date.now() });
   save(KEY.caught, caught);
   if (bottle.owner === myUid()) return;
-  ensureReady();
+  await ensureReady();
   if (fb) {
     const { doc, updateDoc, increment } = fb.fs;
     await updateDoc(doc(fb.db, 'bottles', id), { catches: increment(1) });
@@ -187,7 +221,7 @@ export function hasReported(id) {
 export async function reportBottle(id) {
   const reported = load(KEY.reported, []);
   if (reported.includes(id)) return false;
-  ensureReady();
+  await ensureReady();
   if (fb) {
     const { doc, runTransaction } = fb.fs;
     const ref = doc(fb.db, 'bottles', id);

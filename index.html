@@ -89,7 +89,7 @@
     <!-- 04 건진 편지 -->
     <section class="screen screen-page screen-letter" id="screen-letter" data-route="letter" hidden>
       <header class="subbar">
-        <a class="icon-btn" href="#sea" aria-label="바다로 돌아가기">
+        <a class="icon-btn" href="#sea" id="letter-back" aria-label="바다로 돌아가기">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
         <h2>건진 병</h2>
@@ -240,6 +240,25 @@
             <a class="btn btn-secondary" href="#sea">바다로 돌아가기</a>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- 09 보관함 -->
+    <section class="screen screen-page" id="screen-archive" data-route="archive" hidden>
+      <header class="subbar">
+        <a class="icon-btn" href="#sea" aria-label="바다로 돌아가기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <h2>보관함</h2>
+      </header>
+      <div class="page-body">
+        <p class="banner">지금은 이 기기에서만 보여요. 브라우저 데이터를 지우면 사라질 수 있어요.</p>
+        <div class="tabs tabs-3" role="tablist" aria-label="보관함">
+          <button type="button" role="tab" class="tab" data-tab="caught" aria-selected="true">건진 편지</button>
+          <button type="button" role="tab" class="tab" data-tab="sent" aria-selected="false">띄운 병</button>
+          <button type="button" role="tab" class="tab" data-tab="collect" aria-selected="false">수집품</button>
+        </div>
+        <div class="archive-panel" id="archive-panel" role="tabpanel"></div>
       </div>
     </section>
 
