@@ -164,6 +164,9 @@ const sea = createSea($('scene'), {
     renderProgress(0);
     showFishPanel(true);
   },
+  onEscape() {
+    showFishPanel(false); // 당기다 놓쳐서 다시 흘러감
+  },
   onProgress: renderProgress,
   async onLanded(f) {
     showFishPanel(false);

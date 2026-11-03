@@ -15,11 +15,12 @@ const DRIFT_FROM = 2;        // 3번 문장부터 병이 떠내려온다 (0부�
 const SETTLE_AT = 4;         // 5번 문장에서 하나가 배 옆에 멈춘다
 
 // 병: 시작 위치 → 떠내려온 위치 → (5번 문장 이후) 계속 흘러가는 위치. 화면 비율(0~1)
+// 1인칭 바다와 같은 해류 방향(왼쪽 → 오른쪽)으로 흘러온다
 const BOTTLES = [
-  { look: { shape: 'wine', color: 'amber', cork: 'cork', inside: 'none' }, from: [-0.12, 0.6], to: [0.28, 0.63] },
-  { look: { shape: 'milk', color: 'clear', cork: 'ribbon', inside: 'shell' }, from: [1.12, 0.52], to: [0.74, 0.53], next: [0.92, 0.5] },
-  { look: { shape: 'vial', color: 'green', cork: 'wax', inside: 'flower' }, from: [-0.12, 0.8], to: [0.18, 0.82], next: [-0.1, 0.86] },
-  { look: { shape: 'jam', color: 'sky', cork: 'cork', inside: 'none' }, from: [1.12, 0.88], to: [0.8, 0.84], next: [1.1, 0.9] },
+  { look: { shape: 'wine', color: 'amber', cork: 'cork', inside: 'none' }, from: [-0.12, 0.6], to: [0.3, 0.63] },
+  { look: { shape: 'milk', color: 'clear', cork: 'ribbon', inside: 'shell' }, from: [-0.16, 0.52], to: [0.56, 0.52], next: [1.15, 0.5] },
+  { look: { shape: 'vial', color: 'green', cork: 'wax', inside: 'flower' }, from: [-0.22, 0.8], to: [0.42, 0.82], next: [1.15, 0.86] },
+  { look: { shape: 'jam', color: 'sky', cork: 'cork', inside: 'none' }, from: [-0.1, 0.88], to: [0.72, 0.86], next: [1.15, 0.9] },
 ];
 
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -76,10 +77,12 @@ export function createStory({ app, onStart = () => {}, onDone = () => {} }) {
   // 하나는 배 옆에 멈추고, 나머지는 계속 흘러간다
   function settle() {
     const rect = story.getBoundingClientRect();
-    const boatSide = [0.5 + 70 / rect.width, 0.62 + 2 / rect.height];
+    // 흘러오다 배의 상류 쪽(왼쪽)에 걸려 멈춘다
+    const boatSide = [0.5 - 70 / rect.width, 0.62 + 2 / rect.height];
     bottleEls.forEach((el, i) => {
       if (i === 0) {
         el.style.transitionDuration = '2.4s';
+        el.style.transitionTimingFunction = 'cubic-bezier(.2,.6,.3,1)';
         place(el, boatSide);
       } else {
         el.style.transitionDuration = `${10 + i}s`;

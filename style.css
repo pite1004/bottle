@@ -379,7 +379,6 @@ h1, h2, p { margin: 0; }
   background: linear-gradient(var(--sea-3), var(--sea-4));
   --w: 220px; --h: 10px;
   animation-duration: 11s;
-  animation-direction: reverse;
 }
 
 .wave-3 {
@@ -838,7 +837,7 @@ h1, h2, p { margin: 0; }
   height: 40px;
   margin: -40px 0 0 -10px;
   transition-property: left, top;
-  transition-timing-function: cubic-bezier(.25, .1, .35, 1);
+  transition-timing-function: linear; /* 해류를 따라 일정하게 흐른다 */
 }
 
 .story-bottle > div {
@@ -1707,4 +1706,37 @@ button.archive-item { cursor: pointer; }
   line-height: 1.5;
   color: #5b6370;
   text-align: center;
+}
+
+/* 수면의 반짝임: 해류 방향(왼쪽 → 오른쪽, sea.js의 FLOW_DIR)으로 흐른다 */
+.glints {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1.5px 1px at 20px 30px, rgba(255, 255, 255, .8), transparent),
+    radial-gradient(2px 1px at 90px 80px, rgba(255, 255, 255, .7), transparent),
+    radial-gradient(1.5px 1px at 150px 20px, rgba(255, 255, 255, .6), transparent),
+    radial-gradient(2.5px 1px at 60px 140px, rgba(255, 255, 255, .7), transparent),
+    radial-gradient(2px 1px at 170px 110px, rgba(255, 255, 255, .6), transparent);
+  background-size: 200px 160px;
+  -webkit-mask-image: linear-gradient(transparent, #000 25%, #000 85%, transparent);
+  mask-image: linear-gradient(transparent, #000 25%, #000 85%, transparent);
+  animation: glint-flow 18s linear infinite, glint-twinkle 3.2s ease-in-out infinite;
+}
+
+#app[data-time="night"] .glints { opacity: .45; }
+
+@keyframes glint-flow {
+  from { background-position: 0 0; }
+  to { background-position: 200px 0; }
+}
+
+@keyframes glint-twinkle {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(.6); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glints { animation: glint-flow 36s linear infinite; }
 }
