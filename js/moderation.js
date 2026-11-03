@@ -29,6 +29,7 @@ const MESSAGES = {
   long: '100자까지 쓸 수 있어요',
   repeat: '같은 글자를 너무 많이 반복했어요',
   contact: '연락처나 링크는 바다에 띄울 수 없어요',
+  link: '연락처나 링크는 바다에 띄울 수 없어요',
   sns: '연락처나 SNS 아이디는 바다에 띄울 수 없어요',
   banned: '바다에 띄우기 어려운 표현이 있어요. 조금만 고쳐 볼까요?',
 };
@@ -49,8 +50,8 @@ function hasContact(text) {
   // 이메일
   if (/[\w.+-]+\s*(?:@|골뱅이)\s*[\w-]+\s*\.\s*[a-z]{2,}/i.test(t)) return 'contact';
   // 링크
-  if (/https?:\/\/|www\.|open\.kakao|bit\.ly|닷컴|닷넷/i.test(t)) return 'contact';
-  if (/[a-z0-9-]+\s*\.\s*(?:com|net|org|kr|co|io|me|ly|gg|xyz|app|link|site|shop|kakao)\b/i.test(t)) return 'contact';
+  if (/https?:\/\/|www\.|open\.kakao|bit\.ly|닷컴|닷넷/i.test(t)) return 'link';
+  if (/[a-z0-9-]+\s*\.\s*(?:com|net|org|kr|co|io|me|ly|gg|xyz|app|link|site|shop|kakao)\b/i.test(t)) return 'link';
   // @아이디
   if (/@[a-z0-9._]{2,}/i.test(t)) return 'sns';
   // SNS 이름 + 아이디처럼 보이는 문자열
@@ -59,6 +60,7 @@ function hasContact(text) {
   return null;
 }
 
+// 결과의 code는 통계용 차단 이유 분류: contact / link / profanity / repeat / crisis (글귀 내용은 기록하지 않는다)
 export function checkText(raw) {
   const text = (raw || '').trim();
   if (!text) return { ok: false, reason: MESSAGES.empty };
@@ -66,14 +68,14 @@ export function checkText(raw) {
 
   const flat = squash(text);
   // 위기 문구는 다른 검사보다 먼저 본다
-  if (CRISIS_WORDS.some((w) => flat.includes(squash(w)))) return { ok: false, crisis: true };
+  if (CRISIS_WORDS.some((w) => flat.includes(squash(w)))) return { ok: false, crisis: true, code: 'crisis' };
 
   const contact = hasContact(text);
-  if (contact) return { ok: false, reason: MESSAGES[contact] };
+  if (contact) return { ok: false, reason: MESSAGES[contact], code: contact === 'link' ? 'link' : 'contact' };
 
-  if (BANNED_WORDS.some((w) => flat.includes(squash(w)))) return { ok: false, reason: MESSAGES.banned };
+  if (BANNED_WORDS.some((w) => flat.includes(squash(w)))) return { ok: false, reason: MESSAGES.banned, code: 'profanity' };
 
-  if (/(.)\1{9,}/u.test(text.replace(/\s/g, ''))) return { ok: false, reason: MESSAGES.repeat };
+  if (/(.)\1{9,}/u.test(text.replace(/\s/g, ''))) return { ok: false, reason: MESSAGES.repeat, code: 'repeat' };
 
   return { ok: true, text };
 }

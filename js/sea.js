@@ -19,6 +19,7 @@ const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 
 export function createSea(scene, {
   onEmptyChange = () => {},
+  onCast = () => {},
   onHook = () => {},
   onProgress = () => {},
   onLanded = () => {},
@@ -287,6 +288,7 @@ export function createSea(scene, {
       target: { x: Math.max(8, Math.min(W - 8, x)), y: Math.max(horizon + 6, Math.min(H - 8, y)) },
       phase: 'cast', t: 0, p: 0, holding: false,
     };
+    onCast();
   }
 
   // 바늘이 떨어진 곳 근처에서 가장 가까운 병·쓰레기

@@ -68,6 +68,21 @@ async function ensureReady() {
   if (!fb) throw new Error('Firebase에 연결되지 않았어요');
 }
 
+// 통계 모듈 등에서 Firebase를 직접 쓸 때. 체험 모드면 null.
+export async function firebase() {
+  if (mode !== 'firebase') return null;
+  await ensureReady();
+  return fb;
+}
+
+// 건진 시각의 시간대 (하위 문서 catches.timeOfDay). 06~17 낮, 17~19 노을, 나머지 밤
+export function timeOfDayNow(date = new Date()) {
+  const h = date.getHours();
+  if (h >= 6 && h < 17) return 'day';
+  if (h >= 17 && h < 19) return 'sunset';
+  return 'night';
+}
+
 export function myUid() {
   if (fb) return fb.uid;
   let id = load(KEY.uid, null);
@@ -190,7 +205,7 @@ export async function listMyBottles() {
 // 띄우기: 새 병 저장 후, 이 기기의 "띄운 병" 목록에 id를 남긴다.
 export async function createBottle({ text, font, shape, color, cork, inside }) {
   await ensureReady();
-  const fields = { text, font, shape, color, cork, inside, owner: myUid(), catches: 0, reports: 0, hidden: false };
+  const fields = { text, font, shape, color, cork, inside, owner: myUid(), catches: 0, stars: 0, reports: 0, hidden: false };
   let bottle;
   if (fb) {
     const { collection, addDoc, serverTimestamp } = fb.fs;
@@ -208,7 +223,17 @@ export async function createBottle({ text, font, shape, color, cork, inside }) {
   return bottle;
 }
 
-// 건진 병: catches +1, 이 기기의 "건진 편지"에 저장(같은 병은 한 번만)
+// 같은 배치에서 "내 하위 문서 만들기 + 부모 카운터 +1" (보안 규칙이 한 사람당 한 번만 허용)
+async function addMine(bottleId, sub, fields, counter) {
+  const { doc, writeBatch, serverTimestamp, increment } = fb.fs;
+  const batch = writeBatch(fb.db);
+  const stamp = sub === 'catches' ? 'caughtAt' : 'at';
+  batch.set(doc(fb.db, 'bottles', bottleId, sub, fb.uid), { ...fields, [stamp]: serverTimestamp() });
+  batch.update(doc(fb.db, 'bottles', bottleId), { [counter]: increment(1) });
+  await batch.commit();
+}
+
+// 건진 병: catches/{내 uid} + catches +1, 이 기기의 "건진 편지"에 저장(같은 병은 한 번만)
 export async function catchBottle(bottle) {
   const caught = load(KEY.caught, []);
   if (caught.some((c) => c.id === bottle.id)) return;
@@ -218,11 +243,22 @@ export async function catchBottle(bottle) {
   if (bottle.owner === myUid()) return;
   await ensureReady();
   if (fb) {
-    const { doc, updateDoc, increment } = fb.fs;
-    await updateDoc(doc(fb.db, 'bottles', id), { catches: increment(1) });
+    await addMine(id, 'catches', { timeOfDay: timeOfDayNow() }, 'catches');
   } else {
     updateDemo(id, (b) => { b.catches += 1; });
   }
+}
+
+// 별표를 처음 켤 때만 서버에 stars/{내 uid} + stars +1 (끄는 건 이 기기에서만)
+export async function sendStar(id) {
+  const sent = load('bottle.starSent', []);
+  if (sent.includes(id)) return false;
+  sent.push(id);
+  save('bottle.starSent', sent);
+  await ensureReady();
+  if (fb) await addMine(id, 'stars', {}, 'stars');
+  else updateDemo(id, (b) => { b.stars = (b.stars || 0) + 1; });
+  return true;
 }
 
 export function hasReported(id) {
@@ -235,12 +271,14 @@ export async function reportBottle(id) {
   if (reported.includes(id)) return false;
   await ensureReady();
   if (fb) {
-    const { doc, runTransaction } = fb.fs;
+    const { doc, runTransaction, serverTimestamp } = fb.fs;
     const ref = doc(fb.db, 'bottles', id);
     await runTransaction(fb.db, async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists()) return;
       const reports = (snap.data().reports || 0) + 1;
+      // reports/{내 uid}를 처음 만드는 같은 쓰기에서만 +1, 3 이상이면 숨김
+      tx.set(doc(fb.db, 'bottles', id, 'reports', fb.uid), { at: serverTimestamp() });
       tx.update(ref, reports >= 3 ? { reports, hidden: true } : { reports });
     });
   } else {

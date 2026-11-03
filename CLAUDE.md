@@ -40,6 +40,8 @@ Claude Code는 작업을 시작할 때마다 이 파일을 먼저 읽는다. 아
 8. 시간대 연동 하늘(낮·노을·밤), 바닷소리(파일 없이 Web Audio로 합성)
 9. 검열: 금칙어·연락처·링크 차단, 신고 3회 누적 시 숨김, 위기 문구 대응
 10. 체험 모드: Firebase 설정이 비어 있으면 localStorage로 동작
+11. 통계 기록 + 통계 페이지 `stats.html` (12장). 대회 발표용으로 "몇 명이 참여했고 편지가 얼마나 오갔는지" 숫자를 최대한 남긴다
+12. 내 병의 여정 화면·카드 (`#journey/{병ID}`)
 
 ### 빼는 것 (나중에)
 
@@ -73,13 +75,18 @@ Google·이메일 로그인, 알림 메일, AI 검열, 서버 함수, 관리자 
 * 장면(화면 거의 전체)
   * 하늘(위 약 30%): 기기 현지 시각 기준 — 06~17시 낮, 17~19시 노을, 19~06시 밤(별, 달). 해/달 하나.
   * 수평선 위 잠긴 도시 실루엣(건물 꼭대기만 보임)
-  * 바다: 물결 레이어 2~3겹이 서로 다른 속도로 좌우로 흐름
-  * 병: 동시에 6~8개. 깊이 `z`(0=수평선, 1=바로 앞)를 가진다.
-    * 화면 y = 수평선 + z^1.6 × 바다높이 × 0.85, 크기 = 0.15 + z × 1.0 배
-    * 좌우 위치는 원근에 맞춰 퍼짐: x = 중앙 + (lane − 0.5) × 폭 × (0.4 + z × 1.1)
-    * z는 초당 약 0.012씩 증가(천천히 다가옴). 1.05를 넘으면 사라지고 수평선에서 새로 생성
-    * 위아래 출렁임: sin 파형, 진폭은 크기에 비례
-  * 쓰레기: 생성되는 것 중 약 10%가 페트병·비닐·캔
+  * 바다: 물결 레이어 2~3겹과 수면의 반짝임이 모두 해류 방향(FLOW_DIR)으로 흐름 (서로 다른 속도)
+  * 병: 해류를 따라 한 방향으로 계속 흘러간다 (예전의 "수평선에서 다가오는" 방식은 없앰)
+    * 해류 방향 상수 `FLOW_DIR` (기본: 왼쪽 → 오른쪽)
+    * 생성: 화면 왼쪽(상류) 바깥에서 무작위 깊이 `z`(0.12~0.95)로 생성. 같은 깊이대에 너무 붙지 않게 최소 간격 유지
+    * 화면 y = 수평선 + z^1.6 × 바다높이 × 0.85, 크기 = 0.15 + z × 1.0 배 (원근 공식 유지)
+    * 흐름 속도: 가까울수록 빠르게, 화면 기준 약 12~40px/초 (z에 비례) + 병마다 약간의 속도 차이
+    * 위아래 출렁임(sin, 진폭은 크기에 비례)과 함께 아주 살짝 기울어지며 흔들림(±6°)
+    * 오른쪽(하류) 바깥으로 나가면 제거하고 새로 생성. 화면 안에 항상 6~9개가 보이도록 생성 간격 조절
+    * 그리는 순서는 z 순(먼 것 먼저)
+    * 작은(먼) 병도 누르기 쉽게 보이지 않는 터치 영역은 최소 44×44 (바늘이 떨어진 곳 기준 거리로 판정)
+    * `prefers-reduced-motion`이면 흐름 속도 절반, 기울어짐 없음
+  * 쓰레기: 생성되는 것 중 약 10%가 페트병·비닐·캔 (같은 방식으로 흐름)
   * 낚싯대: 화면 오른쪽 아래에서 바다 쪽으로 뻗은 1인칭 SVG. 끝(Tip Ring) 위치를 기준점으로 쓴다. 대기 중엔 짧은 줄이 늘어져 있음
 * 하단: 안내 문구 `바다를 탭하면 그곳으로 바늘을 던져요` + 기본 버튼 `나도 병 띄우기`
 * 첫 방문 안내는 00 인트로가 맡는다 (예전의 짧은 안내 오버레이는 없앰)
@@ -89,8 +96,10 @@ Google·이메일 로그인, 알림 메일, AI 검열, 서버 함수, 관리자 
 
 * 바다 어디든 탭하면 그곳으로 바늘을 던진다(병이 없어도 던질 수 있음). 수평선 위를 탭하면 수평선 바로 아래로
 * 낚싯대 끝 → 탭한 곳까지 2차 베지어 곡선으로 줄이 약 0.6초 동안 뻗어 나감(제어점은 두 점 중간보다 위쪽). 끝에 작은 바늘
-* 바늘이 떨어진 곳에서 일정 거리(기본 40px, 가까운 큰 병은 크기에 비례해 더 넓게) 안에 병·쓰레기가 있으면 가장 가까운 것이 걸림
-  * 걸리면: 그 대상은 다가오기를 멈추고 출렁임만 유지 + 물결 링 + `걸렸어요!` 말풍선 + 진동(지원 기기만, `navigator.vibrate`) → 아래 하단 패널 표시
+* 탭한 순간 그 근처(아래 거리 안)에 병·쓰레기가 있으면 그것을 노린다. 대상은 계속 흐르고, 날아가는 줄 끝이 움직이는 대상을 따라가서 걸림
+* 탭한 순간 근처에 없었으면 줄 끝은 탭한 곳으로 가고, 떨어진 순간 일정 거리(기본 40px, 가까운 큰 병은 크기에 비례해 더 넓게) 안에 흘러 들어온 것이 있으면 가장 가까운 것이 걸림
+  * 걸리면: 흐름이 멈추고 줄에 매인 채 그 자리에서 출렁임 + 물결 링 + `걸렸어요!` 말풍선 + 진동(지원 기기만, `navigator.vibrate`) → 아래 하단 패널 표시
+  * `놓아주기`를 누르거나, 당기다가 진행률이 0으로 돌아가면 다시 흐름에 합류
   * 허탕이면: 물결 링 + `아무것도 걸리지 않았어요`(작은 말풍선), 줄이 약 0.9초 늘어졌다가 거둬지고 다시 던질 수 있음
 * 하단: `화면 아무 데나 꾹 누르고 있으면 끌어올려요` / `손을 떼면 병이 다시 멀어져요` / 기본 버튼 `꾹 눌러서 끌어올리기`, 작은 텍스트 버튼 `놓아주기`
 
@@ -111,7 +120,8 @@ Google·이메일 로그인, 알림 메일, AI 검열, 서버 함수, 관리자 
 * 병 미리보기: 보낸 사람이 고른 모양·색·마개·넣을 것 그대로 렌더링
 * 편지 카드: 글귀(보낸 사람이 고른 글씨체), `N일 동안 떠다닌 병 · 밤에 띄워짐`(띄운 시각 기준), `신고하기`
 * 버튼: 기본 `카드로 저장하기` / 보조 `바다로 돌려보내기`(→01) · `나도 병 띄우기`(→05)
-* 건질 때: 남의 병이면 Firestore `catches` +1, 로컬 "건진 편지"에 저장(같은 병 중복 저장 X)
+* 건질 때: 남의 병이면 `bottles/{id}/catches/{내 uid}` 문서를 만들고 같은 배치에서 `catches` +1 (5장), 로컬 "건진 편지"에 저장(같은 병 중복 저장 X)
+* 별표를 처음 켜면 `bottles/{id}/stars/{내 uid}` + `stars` +1, 신고는 `reports/{내 uid}` + `reports` +1 (같은 방식, 한 사람당 한 번)
 * 자기가 띄운 병, 이미 건진 병, 숨김 병은 바다에 나오지 않음
 
 ### 04-b 쓰레기 건짐
@@ -154,7 +164,8 @@ Google·이메일 로그인, 알림 메일, AI 검열, 서버 함수, 관리자 
 * 탭: 건진 편지 / 띄운 병 / 수집품
 * 상단 배너: `지금은 이 기기에서만 보여요. 브라우저 데이터를 지우면 사라질 수 있어요.`
 * 건진 편지: 병 썸네일 + 글귀 앞부분 + 날짜, 누르면 04 형태로 다시 보기
-* 띄운 병: Firestore에서 `owner == 내 uid`로 조회, `N명에게 닿았어요` 또는 `아직 떠다니는 중` 배지
+* 띄운 병: Firestore에서 `owner == 내 uid`로 조회, `N명에게 닿았어요` 또는 `아직 떠다니는 중` 배지. 누르면 10 내 병의 여정
+* 맨 아래 작은 안내: `서비스 개선과 발표를 위해 익명 이용 통계(방문·건진 횟수 등)를 모아요. 이름이나 연락처는 수집하지 않아요.` (00 인트로 마지막 화면에도 같은 문구)
 * 수집품: 3열 그리드, 종류별 개수, 미발견은 `???`, 해금 현황
 * 빈 상태 문구는 아래 "사용법 안내" 4번
 
@@ -172,12 +183,22 @@ Google·이메일 로그인, 알림 메일, AI 검열, 서버 함수, 관리자 
    * 건진 편지 없음: `아직 건진 편지가 없어요. 바다에서 떠다니는 병을 탭해보세요` + `바다로 가기` 버튼
    * 띄운 병 없음: `띄운 병이 누군가에게 닿으면 여기에 숫자가 올라가요` + `병 띄우기` 버튼
    * 수집품 없음: `가끔 병 대신 쓰레기가 걸려요. 모으면 꾸미기 재료가 열려요`
-5. 재방문 소식: 앱을 열 때 내 병들의 catches 합계를 지난번 저장값과 비교해서 늘었으면 상단에 `띄운 병이 N명에게 더 닿았어요` 알림(4초 후 사라짐, 누르면 보관함 > 띄운 병 탭). 보관함 아이콘에도 새 소식 점 표시, 보관함을 열면 점 사라짐
+5. 재방문 소식: 앱을 열 때 내 병들의 catches 합계를 지난번 저장값과 비교해서 늘었으면 상단에 `띄운 병이 N명에게 더 닿았어요` 알림(4초 후 사라짐, 누르면 가장 많이 늘어난 병의 여정 화면 `#journey/{병ID}`). 보관함 아이콘에도 새 소식 점 표시, 보관함을 열면 점 사라짐
 6. 말풍선은 인트로가 끝난 뒤에만, 낚시 중(던짐·당기는 중)에는 절대 띄우지 않기
 
 ### 바다가 보낸 병
 
-* 조건을 처음 채우면 바다에 은은하게 빛나는 특별한 병이 하나 떠내려옴(일반 병과 같은 방식으로 낚음). 각 단계는 한 번만, localStorage에 기록. 건지기 전에 흘러가 버리면 다시 떠내려옴
+* 조건을 처음 채우면 바다에 특별한 병이 하나 떠내려옴(일반 병과 같은 방식으로 낚음). 각 단계는 한 번만, localStorage에 기록
+* 한눈에 다른 병: 일반 병에 빛만 두르는 게 아니라 모양부터 다른 전용 병 `seaBottleSVG()` (bottle.js)
+  * 모양: 목이 긴 둥근 플라스크(몸통이 동그란 구), 일반 병보다 1.6배 크게
+  * 유리: 깊은 청록색 + 바닥 쪽으로 갈수록 진해지는 그라데이션
+  * 장식: 목에 감긴 금색 밧줄과 매듭, 빨간 밀랍 인장(가운데 작은 물결 문양), 별 모양 마개
+  * 안쪽: 은은하게 빛나는 작은 빛 구슬이 천천히 떠다님
+  * 주변 효과(일반 병엔 절대 없음): 병 뒤 따뜻한 금빛 후광이 2.5초 주기로 커졌다 작아짐 / 병 위 희미한 빛줄기 / 위로 떠오르는 반짝이는 입자 6~10개 / 수면에 길게 비치는 금빛 반사광 / 밤에는 후광을 더 밝게
+* 등장 연출: 나타날 때 작은 종소리(Web Audio 합성) + 상단 안내 `무언가 반짝이는 병이 떠내려와요` (3초)
+* 흐름: 일반 병의 절반 속도. 화면 밖으로 나가도 사라지지 않고 건질 때까지 다시 왼쪽에서 들어옴. 동시에 1개만 등장
+* 건질 때: 당기기 완료 시 금빛 물보라 + 화면 전체가 잠깐 따뜻하게 밝아짐
+* 편지 화면·보관함 목록·선반에서도 이 전용 모양 그대로 표시
 * 건지면 일반 편지와 다른 디자인(바랜 종이 느낌, 보낸 사람 자리에 `바다로부터`)으로 문장이 한 줄씩 나타남. 신고·별표 없음
 * 단계와 문구:
   * 쓰레기 5개: `오늘 당신이 건져낸 건 편지만이 아니었어요.` / `바다가 아주 조금, 가벼워졌어요.`
@@ -197,6 +218,22 @@ Google·이메일 로그인, 알림 메일, AI 검열, 서버 함수, 관리자 
 * 기록 화면은 card.js로 9:16 공유 카드 저장 가능. 카드에 이름이나 아이디는 넣지 않음
 * 편지 내용 AI 요약은 이번 범위에서 제외
 
+### 10 내 병의 여정 (`#journey/{병ID}`)
+
+* 진입: 보관함 "띄운 병" 탭에서 병을 누르거나, 재방문 알림(`띄운 병이 N명에게 더 닿았어요`)을 누르면 가장 많이 늘어난 병의 여정이 열림
+* 화면
+  * 내가 꾸민 병 그림 + 내 글귀 (오른쪽 위 `글귀 가리기` 토글, localStorage 기억)
+  * 큰 숫자: `N명에게 닿았어요` (bottles.catches)
+  * 작은 숫자: `N명이 마음에 담았어요`(stars) / `N일째 떠다니는 중` / `띄운 지 N시간 만에 첫 사람이 건졌어요` / `가장 최근엔 N분 전, 누군가 밤에 읽었어요` / 낮·노을·밤에 건진 비율(작은 막대 3개)
+  * 여정 타임라인: 띄운 시각~지금 가로선 위에 건진 시점을 점으로 (점이 많으면 날짜별로 묶기)
+  * 아무도 안 건졌으면: `아직 바다를 건너는 중이에요` + `누군가 건져주길 기다려요`
+  * 건진 시각·시간대는 `bottles/{id}/catches` 하위 문서에서 읽음 (이 기능 전에 건진 기록은 숫자에만 들어가고 타임라인엔 없음)
+* 공유 카드 (card.js, 1080×1920): 하늘·바다 배경 + 내 병 + `내 병이 바다를 건너 N명에게 닿았어요` + 타임라인 축소판 + 낮·노을·밤 비율 + (가리기 아니면) 글귀 + 하단 사이트 주소
+  * 0명이면 `내 병을 건져줄 사람?` 초대용 문구
+  * `navigator.share`의 url에 `?ref=journey&b=병ID`
+  * 버튼 `스토리에 공유하기` / `이미지 저장` (통계 이벤트 `share_card` / `save_image`, meta=`journey`)
+  * 이름, uid, 이메일 등 식별 정보는 절대 넣지 않음
+
 ## 4. 병 SVG
 
 * 하나의 함수 `bottleSVG({shape, color, cork, inside})`가 SVG 문자열을 만든다. viewBox `0 0 60 120`, 아래쪽 중앙 기준
@@ -207,7 +244,7 @@ Google·이메일 로그인, 알림 메일, AI 검열, 서버 함수, 관리자 
 
 ## 5. 데이터 (Firestore)
 
-컬렉션 `bottles`, 문서 하나 = 병 하나
+### `bottles/{id}` — 병 하나
 
 ```
 text: string (1~100자)
@@ -217,54 +254,43 @@ color: 'clear' | 'green' | 'sky' | 'amber'
 cork: 'cork' | 'wax' | 'ribbon' | 'seaglass'
 inside: 'none' | 'flower' | 'shell' | 'stardust'
 owner: string (익명 uid)
-catches: number (처음 0)
+catches: number (처음 0)  — 건진 사람 수
+stars: number (처음 0)    — 별표 친 사람 수 (예전 병엔 없을 수 있음 = 0)
 reports: number (처음 0)
 hidden: boolean (처음 false)
 createdAt: serverTimestamp
 ```
 
+하위 컬렉션 (문서 ID = 그 사람의 익명 uid, 한 사람당 문서 1개)
+
+```
+bottles/{id}/catches/{uid}: caughtAt(serverTimestamp), timeOfDay('day'|'sunset'|'night')
+bottles/{id}/stars/{uid}:   at(serverTimestamp)
+bottles/{id}/reports/{uid}: at(serverTimestamp)
+```
+
+* 건지기·별표·신고는 "하위 문서 만들기 + 부모 카운터 +1"을 한 번의 배치(신고는 숨김 판단 때문에 트랜잭션)로 쓴다
 * 바다에 띄울 병: `createdAt` 최신순 60개를 가져와 클라이언트에서 `hidden`·내 병·이미 건진 병을 걸러 무작위로 사용 (복합 인덱스 불필요)
-* 신고: `reports` +1, 결과가 3 이상이면 같은 쓰기에서 `hidden: true`. 같은 기기에서 같은 병 중복 신고 막기(localStorage)
+* 신고: 결과가 3 이상이면 같은 쓰기에서 `hidden: true`. 같은 기기에서 같은 병 중복 신고는 localStorage로도 막음
+* 별표는 처음 켤 때만 서버에 +1 (끄는 건 이 기기에서만, 서버 숫자는 줄지 않음)
 
-### 보안 규칙 (`firestore.rules`, 배포 전에 반드시 적용)
+### `visitors/{uid}`, `events/{자동 ID}` — 통계 (12장)
 
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /bottles/{id} {
-      allow read: if true;
+### 보안 규칙 (`firestore.rules`가 원본, 배포 전에 반드시 콘솔에 적용)
 
-      allow create: if request.auth != null
-        && request.resource.data.keys().hasOnly(['text','font','shape','color','cork','inside','owner','catches','reports','hidden','createdAt'])
-        && request.resource.data.owner == request.auth.uid
-        && request.resource.data.text is string
-        && request.resource.data.text.size() > 0
-        && request.resource.data.text.size() <= 100
-        && request.resource.data.font in ['pen','round','mono']
-        && request.resource.data.shape in ['wine','vial','milk','jam']
-        && request.resource.data.color in ['clear','green','sky','amber']
-        && request.resource.data.cork in ['cork','wax','ribbon','seaglass']
-        && request.resource.data.inside in ['none','flower','shell','stardust']
-        && request.resource.data.catches == 0
-        && request.resource.data.reports == 0
-        && request.resource.data.hidden == false
-        && request.resource.data.createdAt == request.time;
+* bottles
+  * 읽기: 모두 허용
+  * 만들기: 본인 uid를 owner로, 허용 필드만, 값 범위 검사, 카운터 0·hidden false, createdAt == request.time
+  * 고치기: 남의 병만(자기 병 X), `catches`·`stars`·`reports`·`hidden`만. 각 카운터는 그대로이거나, `!exists(내 하위 문서) && existsAfter(내 하위 문서)`일 때만 +1. hidden은 reports ≥ 3일 때만 true로
+  * 지우기: 불가
+* bottles/{id}/catches·stars·reports/{uid}
+  * 읽기: 모두 허용 (여정 화면용, 들어 있는 건 시각·시간대뿐)
+  * 만들기: 문서 ID == 본인 uid, 자기 병 X, 허용 필드만, 시각 == request.time, 같은 쓰기에서 부모 카운터가 정확히 +1 (getAfter)
+  * 고치기·지우기: 불가
+* visitors/{uid}: 읽기 허용, 쓰기는 본인 문서만, 허용 필드만, firstSeen·firstSource는 못 바꿈, lastSeen == request.time, 누계 숫자는 줄어들 수 없음
+* events: 읽기 허용(통계 페이지용, 개인정보 없음), 만들기는 본인 uid + 허용된 type 목록 + 허용 필드만 + at == request.time + typeDate·typeHour가 type·date·hour와 일치, 고치기·지우기 불가
 
-      allow update: if request.auth != null
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['catches','reports','hidden'])
-        && request.resource.data.catches in [resource.data.catches, resource.data.catches + 1]
-        && request.resource.data.reports in [resource.data.reports, resource.data.reports + 1]
-        && (request.resource.data.hidden == resource.data.hidden
-            || (request.resource.data.hidden == true && request.resource.data.reports >= 3));
-
-      allow delete: if false;
-    }
-  }
-}
-```
-
-알려진 한계(이번엔 감수): 같은 사람이 `catches`·`reports`를 여러 번 올릴 수 있음. 나중에 App Check나 사용자별 기록 컬렉션으로 보완.
+예전의 알려진 한계(한 사람이 catches·reports를 여러 번 올릴 수 있음)는 하위 문서 방식으로 해결됨.
 
 ## 6. 검열 (`moderation.js`, 클라이언트)
 
@@ -298,12 +324,17 @@ service cloud.firestore {
 ```
 index.html
 style.css
+stats.html              # 통계 페이지 (링크 없음, 주소로만)
 firebase-config.js      # 사용자가 Firebase 웹 앱 설정값을 붙여 넣는 곳 (비어 있으면 체험 모드)
 firestore.rules
 js/app.js               # 화면 전환, 상태
-js/sea.js               # 바다 렌더링, 병 생성·이동, 낚시 인터랙션
-js/bottle.js            # 병·쓰레기 SVG 생성
+js/sea.js               # 바다 렌더링, 병 생성·흐름, 낚시 인터랙션
+js/bottle.js            # 병·쓰레기·바다가 보낸 병 SVG 생성
 js/store.js             # Firebase / 체험 모드 저장소
+js/stats.js             # 통계 기록 (방문자·이벤트 큐)
+js/stats-page.js        # stats.html 집계
+js/journey.js           # 내 병의 여정 화면
+js/intro.js, js/guide.js, js/seasent.js
 js/moderation.js
 js/sound.js
 js/card.js
@@ -329,3 +360,60 @@ README.md               # 사용자가 따라 할 설정·배포 가이드(한�
 * Firebase 콘솔 작업 중 Firebase 플러그인으로 처리할 수 없는 것이 있으면 Claude가 어디를 눌러야 하는지 단계별로 안내한다
 * 실제 폰에서 테스트하고 느낌 피드백하기
 * 첫 병 20~30개를 직접(또는 지인과) 띄워서 바다를 채우기
+
+## 12. 통계 기록 (`js/stats.js`, `stats.html`) — 배포 전에 반드시 완료
+
+대회 발표용으로 "몇 명이 참여했고 편지가 얼마나 오갔는지"를 최대한 숫자로 남긴다.
+
+### 원칙
+
+* 익명 uid, 횟수, 시각, 기기 종류만 기록. 글귀 내용, IP, 전체 User-Agent, 이름·연락처는 절대 기록하지 않음
+* 검열에 걸린 글도 내용은 저장하지 않고 이유 분류만: `contact` / `link` / `profanity` / `repeat` / `crisis`
+* 인트로 마지막 화면과 보관함 맨 아래에 안내: `서비스 개선과 발표를 위해 익명 이용 통계(방문·건진 횟수 등)를 모아요. 이름이나 연락처는 수집하지 않아요.`
+* 체험 모드에서는 기록하지 않음(콘솔에만 출력)
+
+### 방문자 `visitors/{uid}`
+
+```
+firstSeen, lastSeen: serverTimestamp
+visitCount: number          — 30분 이상 지나서 다시 열면 +1
+firstSource: 'card'|'journey'|'record'|'instagram'|'kakao'|'other'|'direct'  — 첫 방문 때 유입 경로
+device: 'mobile'|'desktop', os: 'ios'|'android'|'other'
+개인 누계(줄어들지 않음): introCompletes, castCount, lettersCaught, trashCaught, seaBottles,
+  writeStarts, bottlesLaunched, shareCount, starsGiven
+```
+
+* 앱을 열 때마다 lastSeen 갱신. 누계는 이벤트를 모아 쓸 때 같은 배치에서 increment
+
+### 유입 경로
+
+* URL의 `?ref=`로 판단: 편지 카드 `ref=card`, 여정 카드 `ref=journey`, 기록 카드 `ref=record`. 공유 링크에는 `&b=병ID`도 (기록 카드는 병 없음)
+* ref가 없으면 `document.referrer`로 instagram / kakao / other / direct
+* 첫 방문 때의 경로만 `visitors.firstSource`에 저장 → "공유 카드로 유입된 사람 수"
+
+### 이벤트 `events/{자동 ID}` (추가만 가능)
+
+```
+uid, type, at(serverTimestamp), date('YYYY-MM-DD', 한국 시간), hour(0~23, 한국 시간), device, meta(짧은 문자열, 선택)
+typeDate: 'catch_letter_2026-11-04', typeHour: 'catch_letter_21'   — 인덱스 없이 집계하려고
+```
+
+* 방문: `session_start`(새 방문일 때), `intro_start`, `intro_complete`, `intro_skip`
+* 낚시: `cast`, `hooked`, `pull_release`(놓아주기), `catch_letter`, `catch_trash`(meta=종류), `catch_sea_bottle`(meta=단계)
+* 편지: `letter_star`, `letter_report`, `letter_return`
+* 쓰기: `write_start`, `write_blocked`(meta=이유 분류), `decorate_open`, `bottle_launch`(meta=`plain`|`custom`)
+* 공유: `share_card`, `save_image` (meta=`letter`|`journey`|`record`)
+* 탐색: `archive_open`, `shelf_open`, `journey_open`, `record_open`, `replay_intro`
+* 큐에 모았다가 `writeBatch`로 묶어서 저장 (5초마다 + 화면을 벗어날 때 visibilitychange)
+
+### 통계 페이지 `stats.html` (사이트 어디에도 링크 걸지 않음, 주소로만)
+
+* 모든 숫자는 `count()` / `sum()` 집계 쿼리로 (읽기 비용 절약)
+* 큰 숫자: 참여자 수, 재방문자 수(visitCount ≥ 2), 띄운 병 수, 오간 편지 수(catches 합계), 편지를 건진 사람 수, 건져낸 쓰레기 수, 공유 횟수, 공유 카드로 들어온 사람 수
+* 퍼널: 방문 → 인트로 완료 → 첫 던짐 → 첫 건짐 → 글쓰기 시작 → 병 띄움 → 공유 (단계별 인원·전환율, visitors 누계 ≥ 1로 셈)
+* 최근 14일 날짜별: 방문, 띄운 병, 건진 편지, 공유 / 시간대별(0~23시) 건진 편지
+* 유입 경로 비율, 기기(모바일/PC, iOS/안드로이드) 비율
+* 검열 차단 이유별 횟수, 신고 횟수, 숨김 병 수
+* 병 1개당 평균 도달 인원, 가장 많이 닿은 병의 도달 수(글귀는 표시하지 않음)
+* 바다가 보낸 병 단계별 발견 인원
+* `CSV로 내려받기`(날짜별 표), `새로고침`, 마지막 갱신 시각. 발표 화면용 큰 글씨

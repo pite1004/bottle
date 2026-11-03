@@ -137,6 +137,8 @@ export async function renderCard(bottle, time = 'day') {
   ctx.fillStyle = pal.sub;
   ctx.font = '28px "Noto Sans KR"';
   ctx.fillText('2100년 · 잠긴 바다', W / 2, H - 74);
+  ctx.font = '26px "Noto Sans KR"';
+  ctx.fillText(location.host, W / 2, H - 34);
 
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
 }
@@ -225,6 +227,8 @@ export async function renderRecordCard(stats, quote, time = 'day') {
   ctx.fillStyle = pal.sub;
   ctx.font = '28px "Noto Sans KR"';
   ctx.fillText('2100년 · 잠긴 바다', W / 2, H - 74);
+  ctx.font = '26px "Noto Sans KR"';
+  ctx.fillText(location.host, W / 2, H - 34);
 
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
 }
@@ -247,16 +251,21 @@ function download(blob, name) {
 // 안드로이드: 다운로드하면 Download 폴더에 저장되고, 갤러리 앱의 Download 앨범에 나타난다.
 // 아이폰: 다운로드가 '파일' 앱으로 가서, 공유 시트의 "이미지 저장"(사진 앱)을 쓴다.
 // how: 'share'(공유 시트 우선) | 'save'(저장 우선)
-// 돌려주는 값: 'shared' | 'saved' | 'cancelled'
-export async function shareOrSave(blob, how) {
+// url: 공유할 때 같이 보내는 링크 (?ref=…&b=… 로 유입 경로를 센다)
+// 돌려주는 값: 'shared' | 'saved'(다운로드) | 'saved-sheet'(아이폰 공유 시트로 저장) | 'cancelled'
+export async function shareOrSave(blob, how, url) {
   const stamp = new Date().toISOString().slice(0, 19).replace(/\D/g, '');
   const name = `bottle-letter-${stamp}.png`; // 저장할 때마다 이름이 달라 덮어쓰지 않게
   const file = new File([blob], name, { type: 'image/png' });
   const canShare = navigator.canShare && navigator.canShare({ files: [file] });
   if (canShare && (how === 'share' || isIOS)) {
     try {
-      await navigator.share({ files: [file], title: '유리병 편지' });
-      return 'shared';
+      // 저장 목적일 땐 링크를 빼야 시트에 "이미지 저장"이 잘 나온다
+      const data = how === 'share' && url
+        ? { files: [file], title: '유리병 편지', text: `유리병 편지 ${url}`, url }
+        : { files: [file], title: '유리병 편지' };
+      await navigator.share(data);
+      return how === 'share' ? 'shared' : 'saved-sheet';
     } catch (err) {
       if (err && err.name === 'AbortError') return 'cancelled';
       // 공유가 막히면 다운로드로

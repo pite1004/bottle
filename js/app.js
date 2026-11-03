@@ -8,6 +8,7 @@ import { createCoach, coachSeen, flyTo, bounce } from './guide.js';
 import { checkMilestones, pendingSeaBottles, receive, listReceived, seaBottle } from './seasent.js';
 import * as sound from './sound.js';
 import * as store from './store.js';
+import * as stats from './stats.js';
 
 const app = document.getElementById('app');
 const params = new URLSearchParams(location.search);
@@ -91,10 +92,18 @@ function route() {
   for (const [key, el] of Object.entries(screens)) el.hidden = key !== target;
   $('demo-badge').hidden = store.mode !== 'demo' || target !== 'sea';
   if (target === 'soon') $('soon-title').textContent = SOON_TITLES[name];
-  if (target === 'decorate') renderDecorate();
+  if (target === 'write') stats.track('write_start');
+  if (target === 'decorate') {
+    stats.track('decorate_open');
+    renderDecorate();
+  }
   if (target === 'sent') playSent();
-  if (target === 'record') renderRecord();
+  if (target === 'record') {
+    stats.track('record_open');
+    renderRecord();
+  }
   if (target === 'archive') {
+    stats.track('archive_open');
     clearArchiveNews();
     const tab = new URLSearchParams(location.hash.split('?')[1] || '').get('tab');
     renderArchive(ARCHIVE_TABS.includes(tab) ? tab : 'caught');
@@ -146,7 +155,11 @@ function releaseFish() {
 }
 
 const sea = createSea($('scene'), {
+  onCast() {
+    stats.track('cast');
+  },
   onHook() {
+    stats.track('hooked');
     holdBtn.disabled = false;
     renderProgress(0);
     showFishPanel(true);
@@ -158,6 +171,7 @@ const sea = createSea($('scene'), {
     if (f.data.special) {
       // 바다가 보낸 병: 이 기기에만 기록 (Firestore에 저장하지 않음)
       receive(f.data.special);
+      stats.track('catch_sea_bottle', f.data.special);
       const got = listReceived().find((r) => r.key === f.data.special);
       showLetter(seaBottle(f.data.special, got && got.receivedAt));
       location.hash = 'letter';
@@ -165,6 +179,7 @@ const sea = createSea($('scene'), {
     } else if (f.kind === 'bottle') {
       // 건진 횟수 기록이 실패해도 편지는 보여 준다
       store.catchBottle(f.data).catch((err) => console.error(err));
+      stats.track('catch_letter');
       queueCoach('caught');
       showLetter(f.data);
       location.hash = 'letter';
@@ -173,6 +188,7 @@ const sea = createSea($('scene'), {
     } else {
       queueCoach('trash');
       showFound(f.data.trash, store.addTrash(f.data.trash));
+      stats.track('catch_trash', f.data.trash);
       location.hash = 'found';
       checkSeaGifts();
     }
@@ -221,7 +237,10 @@ document.addEventListener('keyup', (e) => {
   setHolding(false);
 });
 
-$('release-btn').addEventListener('click', releaseFish);
+$('release-btn').addEventListener('click', () => {
+  stats.track('pull_release');
+  releaseFish();
+});
 
 async function loadSea() {
   try {
@@ -287,6 +306,10 @@ $('star-btn').addEventListener('click', () => {
   if (!currentLetter || currentLetter.special) return;
   const on = store.toggleStar(currentLetter.id);
   renderStar();
+  if (on) {
+    stats.track('letter_star');
+    store.sendStar(currentLetter.id).catch((err) => console.error(err));
+  }
   toast(on ? '마음에 남은 편지로 표시했어요' : '표시를 뺐어요');
 });
 
@@ -299,6 +322,7 @@ $('report-btn').addEventListener('click', async () => {
   if (!confirm('이 병을 신고할까요?\n신고가 쌓이면 바다에서 사라져요.')) return;
   try {
     await store.reportBottle(currentLetter.id);
+    stats.track('letter_report');
     toast('신고했어요. 알려 줘서 고마워요');
   } catch (err) {
     console.error(err);
@@ -309,17 +333,30 @@ $('report-btn').addEventListener('click', async () => {
 // ---------- 공유 카드 ----------
 // 아이폰은 버튼을 누른 직후에만 공유 시트를 열 수 있어서, 화면을 열 때 미리 그려 둔다.
 let cardPromise = null;
+let cardMeta = { kind: 'letter', b: null }; // kind: 'letter' | 'journey' | 'record'
+
+const CARD_REF = { letter: 'card', journey: 'journey', record: 'record' };
 
 function prepareCard(b) {
+  cardMeta = { kind: 'letter', b: b.special ? null : b.id };
   cardPromise = renderCard(b, app.dataset.time);
   cardPromise.catch((err) => console.error(err));
+}
+
+// 공유 링크: 누가 이 카드로 들어왔는지 셀 수 있게 ?ref=, 병이 있으면 &b=
+function shareUrl() {
+  const q = new URLSearchParams({ ref: CARD_REF[cardMeta.kind] });
+  if (cardMeta.b) q.set('b', cardMeta.b);
+  return `${location.origin}/?${q}`;
 }
 
 async function deliverCard(how) {
   if (!cardPromise) return;
   try {
     const blob = await cardPromise;
-    const result = await shareOrSave(blob, how);
+    const result = await shareOrSave(blob, how, shareUrl());
+    if (result === 'shared') stats.track('share_card', cardMeta.kind);
+    if (result === 'saved' || result === 'saved-sheet') stats.track('save_image', cardMeta.kind);
     if (result === 'saved') {
       toast(/Android/i.test(navigator.userAgent)
         ? '저장했어요. 갤러리의 Download 앨범에서 볼 수 있어요'
@@ -404,6 +441,7 @@ $('font-options').addEventListener('click', (e) => {
 $('write-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const result = checkText(draft.text);
+  if (result.code) stats.track('write_blocked', result.code);
   $('crisis').hidden = !result.crisis;
   if (result.crisis) {
     writeError.hidden = true;
@@ -480,6 +518,7 @@ async function launch(chosenLook) {
   } finally {
     launching = false;
   }
+  stats.track('bottle_launch', chosenLook === DEFAULT_LOOK ? 'plain' : 'custom');
   lastSent = bottle;
   draft.text = '';
   Object.assign(draft, DEFAULT_LOOK);
@@ -669,6 +708,7 @@ archivePanel.addEventListener('click', (e) => {
   const toggle = e.target.closest('.view-toggle button');
   if (toggle) {
     store.save('bottle.caughtView', toggle.dataset.view);
+    if (toggle.dataset.view === 'shelf') stats.track('shelf_open');
     renderCaught();
     return;
   }
@@ -707,8 +747,8 @@ function recordStats(reached) {
 let recordQuote = null;
 
 function drawRecord(reached) {
-  const stats = recordStats(reached);
-  $('record-list').innerHTML = stats.map((s) => `<div><dt>${s.label}</dt><dd>${s.value}</dd></div>`).join('');
+  const rows = recordStats(reached);
+  $('record-list').innerHTML = rows.map((s) => `<div><dt>${s.label}</dt><dd>${s.value}</dd></div>`).join('');
   const fig = $('record-quote');
   fig.hidden = !recordQuote;
   if (recordQuote) {
@@ -716,7 +756,8 @@ function drawRecord(reached) {
     q.textContent = recordQuote.text;
     q.className = `font-${recordQuote.font}`;
   }
-  cardPromise = renderRecordCard(stats, recordQuote, app.dataset.time);
+  cardMeta = { kind: 'record', b: null };
+  cardPromise = renderRecordCard(rows, recordQuote, app.dataset.time);
   cardPromise.catch((err) => console.error(err));
 }
 
@@ -754,7 +795,8 @@ soundBtn.addEventListener('click', () => {
 // ---------- 00 인트로 ----------
 const story = createStory({
   app,
-  onStart() {
+  onStart(full) {
+    stats.track(full ? 'intro_complete' : 'intro_skip');
     store.save('bottle.seenStory', true);
     sound.defer(false); // "이야기 들어보기"·"건너뛰기"를 누른 이 탭에서 바닷소리를 켠다
   },
@@ -764,6 +806,7 @@ const story = createStory({
 });
 
 function playStory() {
+  stats.track('intro_start');
   if (location.hash && location.hash !== '#sea') location.hash = 'sea';
   sound.defer(true);
   story.play();
@@ -790,6 +833,7 @@ document.addEventListener('keydown', (e) => {
 });
 $('replay-story-btn').addEventListener('click', () => {
   setMenu(false);
+  stats.track('replay_intro');
   playStory();
 });
 
@@ -823,6 +867,7 @@ function clearArchiveNews() {
 let pendingFly = null;
 
 $('letter-return').addEventListener('click', () => {
+  stats.track('letter_return');
   const svg = $('letter-bottle').querySelector('svg');
   if (letterFresh && svg) pendingFly = { rect: svg.getBoundingClientRect(), svg: bottleSVG(currentLetter) };
 });
@@ -947,6 +992,7 @@ document.addEventListener('touchmove', (e) => {
   if (e.target.closest('.scene, .bottom-fish, .story')) e.preventDefault();
 }, { passive: false });
 
+stats.start(); // 방문 기록 (체험 모드면 콘솔에만)
 applyTime();
 setInterval(applyTime, 60 * 1000);
 makeStars();

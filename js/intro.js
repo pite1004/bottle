@@ -107,6 +107,7 @@ export function createStory({ app, onStart = () => {}, onDone = () => {} }) {
     clearTimeout(timer);
     if (!startBtn.hidden) return;
     startBtn.hidden = false;
+    $('story-privacy').hidden = false;
     startBtn.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }],
       { duration: 500, easing: 'ease-out' });
     startBtn.focus({ preventScroll: true });
@@ -129,6 +130,7 @@ export function createStory({ app, onStart = () => {}, onDone = () => {} }) {
     done = false;
     index = -1;
     startBtn.hidden = true;
+    $('story-privacy').hidden = true;
     lineEl.textContent = '';
     for (const el of [story, world, lineEl, skipBtn, startBtn, topbar, rod]) {
       el.getAnimations().forEach((a) => a.cancel());
@@ -145,7 +147,7 @@ export function createStory({ app, onStart = () => {}, onDone = () => {} }) {
     if (done) return;
     done = true;
     clearTimeout(timer);
-    onStart(); // 버튼을 누른 이 순간을 소리 시작 제스처로 쓴다
+    onStart(full); // 버튼을 누른 이 순간을 소리 시작 제스처로 쓴다 (full: 이야기 들어보기, 아니면 건너뛰기)
 
     const zoom = full && !reducedMotion.matches;
     const dur = zoom ? 1500 : 500;

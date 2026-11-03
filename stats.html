@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>유리병 편지 통계</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #141a22;
+      --panel: #1d2632;
+      --line: #2d3a4a;
+      --ink: #eef2f6;
+      --sub: #9fb0c2;
+      --accent: #7fb2e0;
+      --accent-2: #f0c36b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Noto Sans KR", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    main { max-width: 1280px; margin: 0 auto; padding: 32px 24px 64px; }
+    header { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; justify-content: space-between; }
+    h1 { margin: 0; font-size: 32px; }
+    h1 small { display: block; font-size: 15px; font-weight: 400; color: var(--sub); margin-top: 6px; }
+    h2 { margin: 40px 0 14px; font-size: 20px; }
+    .actions { display: flex; gap: 10px; align-items: center; }
+    .updated { color: var(--sub); font-size: 14px; }
+    button {
+      min-height: 44px; padding: 0 18px; border: 1px solid var(--line); border-radius: 12px;
+      background: var(--panel); color: var(--ink); font: inherit; font-size: 15px; cursor: pointer;
+    }
+    button.primary { background: #2f6f9f; border-color: #2f6f9f; }
+    button:disabled { opacity: .5; cursor: default; }
+    .big { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-top: 28px; }
+    .card { padding: 20px 22px; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); }
+    .card dt { color: var(--sub); font-size: 15px; }
+    .card dd { margin: 8px 0 0; font-size: 48px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .card dd small { font-size: 15px; font-weight: 400; color: var(--sub); margin-left: 6px; }
+    .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 14px; }
+    .bars { display: flex; flex-direction: column; gap: 10px; }
+    .bar-row { display: grid; grid-template-columns: 130px 1fr 110px; gap: 12px; align-items: center; font-size: 15px; }
+    .bar-track { height: 22px; border-radius: 6px; background: #26323f; overflow: hidden; }
+    .bar-fill { height: 100%; background: var(--accent); border-radius: 6px; }
+    .bar-row .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .bar-row .num small { color: var(--sub); }
+    .funnel .bar-fill { background: linear-gradient(90deg, #2f6f9f, var(--accent)); }
+    .cols { display: flex; align-items: flex-end; gap: 4px; height: 180px; padding-top: 22px; }
+    .col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
+    .col .stick { width: 100%; max-width: 28px; background: var(--accent-2); border-radius: 4px 4px 0 0; min-height: 1px; }
+    .col span { font-size: 11px; color: var(--sub); font-variant-numeric: tabular-nums; }
+    .col b { font-size: 11px; font-weight: 500; }
+    table { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--sub); font-weight: 500; }
+    .note { color: var(--sub); font-size: 13px; margin-top: 10px; }
+    .error { padding: 16px; border-radius: 12px; background: #4a2323; color: #ffd9d4; }
+    .loading { color: var(--sub); }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>유리병 편지 통계<small>2100년 · 잠긴 바다 — 익명 이용 통계 (개인정보 없음)</small></h1>
+      <div class="actions">
+        <span class="updated" id="updated">불러오는 중…</span>
+        <button type="button" id="csv-btn" disabled>CSV로 내려받기</button>
+        <button type="button" class="primary" id="refresh-btn">새로고침</button>
+      </div>
+    </header>
+
+    <div id="error" class="error" hidden></div>
+
+    <dl class="big" id="big"></dl>
+
+    <h2>참여 퍼널</h2>
+    <div class="card"><div class="bars funnel" id="funnel"></div>
+      <p class="note">각 단계를 한 번이라도 해 본 사람 수. 괄호는 앞 단계 대비 전환율.</p></div>
+
+    <h2>최근 14일</h2>
+    <div class="card">
+      <table id="daily"></table>
+    </div>
+
+    <h2>시간대별 건진 편지 (한국 시간)</h2>
+    <div class="card"><div class="cols" id="hourly"></div></div>
+
+    <div class="grid2">
+      <div>
+        <h2>유입 경로 (첫 방문 기준)</h2>
+        <div class="card"><div class="bars" id="sources"></div></div>
+      </div>
+      <div>
+        <h2>기기</h2>
+        <div class="card"><div class="bars" id="devices"></div></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div>
+        <h2>안전 · 검열</h2>
+        <div class="card"><div class="bars" id="safety"></div></div>
+      </div>
+      <div>
+        <h2>병이 닿은 정도 · 바다가 보낸 병</h2>
+        <div class="card"><div class="bars" id="reach"></div></div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="js/stats-page.js"></script>
+</body>
+</html>

@@ -1,11 +1,13 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ---------- 병 ----------
     match /bottles/{id} {
       allow read: if true;
 
       allow create: if request.auth != null
-        && request.resource.data.keys().hasOnly(['text','font','shape','color','cork','inside','owner','catches','reports','hidden','createdAt'])
+        && request.resource.data.keys().hasOnly(['text','font','shape','color','cork','inside','owner','catches','stars','reports','hidden','createdAt'])
         && request.resource.data.owner == request.auth.uid
         && request.resource.data.text is string
         && request.resource.data.text.size() > 0
@@ -16,18 +18,156 @@ service cloud.firestore {
         && request.resource.data.cork in ['cork','wax','ribbon','seaglass']
         && request.resource.data.inside in ['none','flower','shell','stardust']
         && request.resource.data.catches == 0
+        && request.resource.data.get('stars', 0) == 0
         && request.resource.data.reports == 0
         && request.resource.data.hidden == false
         && request.resource.data.createdAt == request.time;
 
+      // 카운터는 "그 사람의 하위 문서를 처음 만드는 같은 쓰기"에서만 +1 된다 (한 사람이 여러 번 못 올림)
+      // 자기 병은 건지기·별표·신고 모두 불가
       allow update: if request.auth != null
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['catches','reports','hidden'])
-        && request.resource.data.catches in [resource.data.catches, resource.data.catches + 1]
-        && request.resource.data.reports in [resource.data.reports, resource.data.reports + 1]
-        && (request.resource.data.hidden == resource.data.hidden
+        && resource.data.owner != request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['catches','stars','reports','hidden'])
+        && counterOk('catches', 'catches')
+        && counterOk('stars', 'stars')
+        && counterOk('reports', 'reports')
+        && (request.resource.data.get('hidden', false) == resource.data.get('hidden', false)
             || (request.resource.data.hidden == true && request.resource.data.reports >= 3));
 
       allow delete: if false;
+
+      function subPath(sub) {
+        return /databases/$(database)/documents/bottles/$(id)/$(sub)/$(request.auth.uid);
+      }
+
+      function counterOk(field, sub) {
+        return request.resource.data.get(field, 0) == resource.data.get(field, 0)
+          || (request.resource.data.get(field, 0) == resource.data.get(field, 0) + 1
+              && !exists(subPath(sub))
+              && existsAfter(subPath(sub)));
+      }
+
+      function bottlePath() {
+        return /databases/$(database)/documents/bottles/$(id);
+      }
+
+      // 같은 쓰기에서 부모 병의 카운터가 정확히 +1 되어야 하위 문서를 만들 수 있다
+      function bumped(field) {
+        return getAfter(bottlePath()).data.get(field, 0) == get(bottlePath()).data.get(field, 0) + 1;
+      }
+
+      function notOwner() {
+        return get(bottlePath()).data.owner != request.auth.uid;
+      }
+
+      // 건진 사람마다 문서 1개 (문서 ID = 건진 사람 uid)
+      match /catches/{uid} {
+        allow read: if true;
+        allow create: if request.auth != null && request.auth.uid == uid
+          && notOwner()
+          && request.resource.data.keys().hasOnly(['caughtAt','timeOfDay'])
+          && request.resource.data.caughtAt == request.time
+          && request.resource.data.timeOfDay in ['day','sunset','night']
+          && bumped('catches');
+        allow update, delete: if false;
+      }
+
+      match /stars/{uid} {
+        allow read: if true;
+        allow create: if request.auth != null && request.auth.uid == uid
+          && notOwner()
+          && request.resource.data.keys().hasOnly(['at'])
+          && request.resource.data.at == request.time
+          && bumped('stars');
+        allow update, delete: if false;
+      }
+
+      match /reports/{uid} {
+        allow read: if true;
+        allow create: if request.auth != null && request.auth.uid == uid
+          && notOwner()
+          && request.resource.data.keys().hasOnly(['at'])
+          && request.resource.data.at == request.time
+          && bumped('reports');
+        allow update, delete: if false;
+      }
+    }
+
+    // ---------- 방문자 (문서 ID = 익명 uid). 개인정보 없이 횟수·시각·기기 종류만 ----------
+    match /visitors/{uid} {
+      allow read: if true;
+
+      allow create: if request.auth != null && request.auth.uid == uid
+        && visitorFieldsOk()
+        && request.resource.data.firstSeen == request.time
+        && request.resource.data.lastSeen == request.time
+        && request.resource.data.visitCount == 1
+        && request.resource.data.firstSource in ['card','journey','record','instagram','kakao','other','direct']
+        && countersStartAtZero();
+
+      allow update: if request.auth != null && request.auth.uid == uid
+        && visitorFieldsOk()
+        && request.resource.data.firstSeen == resource.data.firstSeen
+        && request.resource.data.firstSource == resource.data.firstSource
+        && request.resource.data.lastSeen == request.time
+        && countersNotDecreasing();
+
+      allow delete: if false;
+
+      function visitorFieldsOk() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['firstSeen','lastSeen','visitCount','firstSource','device','os',
+            'introCompletes','castCount','lettersCaught','trashCaught','seaBottles',
+            'writeStarts','bottlesLaunched','shareCount','starsGiven'])
+          && d.device in ['mobile','desktop']
+          && d.os in ['ios','android','other'];
+      }
+
+      function countersStartAtZero() {
+        let d = request.resource.data;
+        return d.get('introCompletes', 0) == 0 && d.get('castCount', 0) == 0
+          && d.get('lettersCaught', 0) == 0 && d.get('trashCaught', 0) == 0
+          && d.get('seaBottles', 0) == 0 && d.get('writeStarts', 0) == 0
+          && d.get('bottlesLaunched', 0) == 0 && d.get('shareCount', 0) == 0
+          && d.get('starsGiven', 0) == 0;
+      }
+
+      function grows(field) {
+        return request.resource.data.get(field, 0) is int
+          && request.resource.data.get(field, 0) >= resource.data.get(field, 0);
+      }
+
+      function countersNotDecreasing() {
+        return grows('visitCount') && grows('introCompletes') && grows('castCount')
+          && grows('lettersCaught') && grows('trashCaught') && grows('seaBottles')
+          && grows('writeStarts') && grows('bottlesLaunched') && grows('shareCount')
+          && grows('starsGiven');
+      }
+    }
+
+    // ---------- 이벤트 (추가만 가능, 수정·삭제 불가). 글귀 내용·IP·User-Agent 없음 ----------
+    match /events/{eventId} {
+      allow read: if true;
+
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['uid','type','at','date','hour','device','meta','typeDate','typeHour'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.type in [
+            'session_start','intro_start','intro_complete','intro_skip',
+            'cast','hooked','pull_release','catch_letter','catch_trash','catch_sea_bottle',
+            'letter_star','letter_report','letter_return',
+            'write_start','write_blocked','decorate_open','bottle_launch',
+            'share_card','save_image',
+            'archive_open','shelf_open','journey_open','record_open','replay_intro']
+        && request.resource.data.at == request.time
+        && request.resource.data.date is string && request.resource.data.date.size() == 10
+        && request.resource.data.hour is int && request.resource.data.hour >= 0 && request.resource.data.hour <= 23
+        && request.resource.data.device in ['mobile','desktop']
+        && (!('meta' in request.resource.data) || (request.resource.data.meta is string && request.resource.data.meta.size() <= 40))
+        && request.resource.data.typeDate == request.resource.data.type + '_' + request.resource.data.date
+        && request.resource.data.typeHour == request.resource.data.type + '_' + string(request.resource.data.hour);
+
+      allow update, delete: if false;
     }
   }
 }

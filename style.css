@@ -1688,3 +1688,23 @@ button.archive-item { cursor: pointer; }
   .wave { animation-duration: 60s !important; }
   .star { animation: none; }
 }
+
+/* 익명 통계 안내 (인트로 마지막·보관함 맨 아래) */
+.story-privacy {
+  max-width: 300px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #3b4250;
+  pointer-events: auto;
+}
+
+.story-privacy[hidden] { display: none; }
+
+.privacy-note {
+  margin-top: 8px;
+  padding: 0 4px 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #5b6370;
+  text-align: center;
+}
