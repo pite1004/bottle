@@ -171,6 +171,58 @@ function corkSVG(kind, s) {
   </g>`;
 }
 
+// 바다가 보낸 병 전용: 목이 긴 둥근 플라스크, 깊은 청록 유리, 금색 밧줄·매듭, 빨간 밀랍 인장, 별 마개, 떠다니는 빛 구슬.
+// 일반 병과 같은 viewBox(0 0 60 120, 아래쪽 가운데 기준). 바다에서는 1.6배 크게 그린다.
+export function seaBottleSVG() {
+  const n = ++uid;
+  // 몸통: 목(x 25.5~34.5) → 반지름 27인 구(중심 30, 86)
+  const body = 'M25.5 22 L34.5 22 L34.5 59.4 A27 27 0 1 1 25.5 59.4 Z';
+  const orbs = [[21, 96, 2.2, 5.2], [37, 100, 1.6, 6.4], [30, 78, 1.8, 4.6], [40, 84, 1.3, 7]]
+    .map(([cx, cy, r, dur], i) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#sOrb${n})">
+      <animate attributeName="cy" values="${cy};${cy - 7};${cy}" dur="${dur}s" begin="${-i * 1.3}s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values=".55;1;.55" dur="${dur * 0.7}s" begin="${-i}s" repeatCount="indefinite"/>
+    </circle>`).join('');
+  return `<svg viewBox="0 0 60 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs>
+    <linearGradient id="sGlass${n}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a9ea4" stop-opacity=".78"/>
+      <stop offset=".55" stop-color="#1d6f78" stop-opacity=".86"/>
+      <stop offset="1" stop-color="#0b3e46" stop-opacity=".95"/>
+    </linearGradient>
+    <radialGradient id="sOrb${n}">
+      <stop offset="0" stop-color="#fffbe6"/>
+      <stop offset=".5" stop-color="#ffe7a3" stop-opacity=".8"/>
+      <stop offset="1" stop-color="#ffd27a" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="sClip${n}"><path d="${body}"/></clipPath>
+  </defs>
+  <path d="${body}" fill="url(#sGlass${n})"/>
+  <g clip-path="url(#sClip${n})">
+    <g transform="rotate(-18 30 88)">
+      <rect x="25" y="70" width="10" height="30" rx="4" fill="#f3e6c4" stroke="#cdb88a" stroke-width=".8"/>
+      <rect x="24.6" y="83.5" width="10.8" height="2.4" fill="#b98a3c"/>
+    </g>
+    ${orbs}
+  </g>
+  <path d="${body}" fill="none" stroke="#0a3a40" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M10 80 C8 92 12 104 20 109" fill="none" stroke="#e8fbff" stroke-opacity=".55" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M27.5 26 L27.5 52" stroke="#e8fbff" stroke-opacity=".45" stroke-width="1.6" stroke-linecap="round"/>
+  <!-- 입구 테두리 -->
+  <rect x="24.3" y="19.5" width="11.4" height="4" rx="1.6" fill="#1d6f78" stroke="#0a3a40" stroke-width="1"/>
+  <!-- 금색 밧줄과 매듭 -->
+  <g stroke="#d9a441" stroke-width="2.1" stroke-linecap="round" fill="none">
+    <path d="M24.8 41 L35.2 44.5 M24.8 44.5 L35.2 48 M24.8 48 L35.2 51.5"/>
+    <path d="M35.4 46 q6 1 5 7 q-1 5 -4 9 M35.4 46 q3 4 7 5"/>
+  </g>
+  <circle cx="35.8" cy="46.2" r="2.3" fill="#e9b858" stroke="#a87a26" stroke-width=".8"/>
+  <!-- 빨간 밀랍 인장 (가운데 물결 문양) -->
+  <path d="M30 82.5 q4.2 -.6 6.3 2.6 q2 3.4 -.3 6.6 q-2.6 3 -6.4 2.4 q-4.1 -.9 -5.3 -4.6 q-.8 -4 2.3 -6.1 q1.6 -.9 3.4 -.9 z" fill="#b5302a" stroke="#8a1f1a" stroke-width=".8"/>
+  <path d="M25.8 88.4 q1.4 -1.6 2.8 0 t2.8 0 t2.8 0" fill="none" stroke="#f3c7b8" stroke-width="1.1" stroke-linecap="round"/>
+  <!-- 별 마개 -->
+  <path d="M30 4.5 l2.2 4.6 5 .7 -3.6 3.5 .9 5 -4.5 -2.4 -4.5 2.4 .9 -5 -3.6 -3.5 5 -.7 z" fill="#f0c860" stroke="#a87a26" stroke-width=".9" stroke-linejoin="round"/>
+</svg>`;
+}
+
 export const TRASH_KINDS = ['pet', 'vinyl', 'can'];
 
 export const TRASH_NAMES = { pet: '페트병', vinyl: '비닐', can: '녹슨 캔' };

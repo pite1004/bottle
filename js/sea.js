@@ -1,5 +1,5 @@
 // 1인칭 바다: 병·쓰레기가 해류를 따라 한 방향으로 흐르고, 출렁이고, 낚싯대로 건진다.
-import { bottleSVG, trashSVG, TRASH_KINDS } from './bottle.js';
+import { bottleSVG, seaBottleSVG, trashSVG, TRASH_KINDS } from './bottle.js';
 
 const HORIZON = 0.30;      // 하늘이 차지하는 비율 (style.css의 --horizon과 같게)
 export const FLOW_DIR = 1; // 해류 방향: 1 = 왼쪽 → 오른쪽, -1 = 오른쪽 → 왼쪽 (물결·반짝임 CSS도 같은 방향)
@@ -26,6 +26,7 @@ export function createSea(scene, {
   onCast = () => {},
   onHook = () => {},
   onEscape = () => {},
+  onSpecialAppear = () => {},
   onProgress = () => {},
   onLanded = () => {},
 } = {}) {
@@ -262,9 +263,10 @@ export function createSea(scene, {
     el.className = data.special ? 'floater special' : 'floater';
     el.setAttribute('aria-label', data.special ? '은은하게 빛나는 병 건지기'
       : kind === 'bottle' ? '떠다니는 유리병 건지기' : '떠다니는 무언가 건지기');
-    el.innerHTML = kind === 'bottle' ? bottleSVG(data) : trashSVG(data.trash);
+    el.innerHTML = data.special ? seaBottleHTML() : kind === 'bottle' ? bottleSVG(data) : trashSVG(data.trash);
 
-    const w = 60, h = 120; // 그림 크기 (viewBox 0 0 60 120, 아래쪽 가운데 기준)
+    // 그림 크기 (viewBox 0 0 60 120, 아래쪽 가운데 기준). 바다가 보낸 병은 1.6배
+    const w = data.special ? 96 : 60, h = data.special ? 192 : 120;
     el.style.width = `${w}px`;
     el.style.height = `${h}px`;
     const z = pickZ(x ?? upstreamX(1, w));
@@ -285,7 +287,15 @@ export function createSea(scene, {
     });
     layer.appendChild(el);
     floaters.push(f);
+    if (data.special) onSpecialAppear(f);
     return f;
+  }
+
+  // 바다가 보낸 병: 후광·빛줄기·떠오르는 반짝이·수면 반사광 + 전용 병 (일반 병엔 없는 효과)
+  function seaBottleHTML() {
+    const sparks = Array.from({ length: 8 }, (_, i) =>
+      `<span class="sea-spark" style="--x:${18 + Math.random() * 64}%;--d:${(-i * 0.45).toFixed(2)}s;--s:${(0.7 + Math.random() * 0.7).toFixed(2)}"></span>`).join('');
+    return `<span class="sea-reflect"></span><span class="sea-halo"></span><span class="sea-beam"></span>${sparks}${seaBottleSVG()}`;
   }
 
   function remove(f) {
@@ -392,7 +402,8 @@ export function createSea(scene, {
   function land() {
     const f = fish.f;
     fish.phase = 'landing';
-    splash(f.x, Math.min(f.y, H) - 40);
+    splash(f.x, Math.min(f.y, H) - 40, !!f.data.special);
+    if (f.data.special) warmFlash();
     f.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 320, fill: 'forwards' });
     setTimeout(() => {
       remove(f);
@@ -446,7 +457,17 @@ export function createSea(scene, {
     ).onfinish = () => b.remove();
   }
 
-  function splash(x, y) {
+  // 바다가 보낸 병을 건지면 화면 전체가 잠깐 따뜻하게 밝아진다
+  function warmFlash() {
+    const app = scene.closest('#app') || document.body;
+    const el = document.createElement('div');
+    el.className = 'warm-flash';
+    app.appendChild(el);
+    el.animate([{ opacity: 0 }, { opacity: 1, offset: 0.25 }, { opacity: 0 }],
+      { duration: reducedMotion.matches ? 400 : 1100, easing: 'ease-out' }).onfinish = () => el.remove();
+  }
+
+  function splash(x, y, gold = false) {
     const flash = document.createElement('div');
     flash.className = 'ripple';
     flash.style.left = `${x}px`;
@@ -456,9 +477,9 @@ export function createSea(scene, {
       [{ transform: 'scale(2)', opacity: 1 }, { transform: 'scale(9)', opacity: 0 }],
       { duration: 600, easing: 'ease-out', fill: 'forwards' },
     ).onfinish = () => flash.remove();
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < (gold ? 22 : 14); i++) {
       const d = document.createElement('div');
-      d.className = 'drop';
+      d.className = gold ? 'drop gold' : 'drop';
       d.style.left = `${x}px`;
       d.style.top = `${y}px`;
       effects.appendChild(d);

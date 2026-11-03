@@ -1,5 +1,5 @@
 // 공유 카드: 1080×1920 canvas — 하늘·바다, 잠긴 도시, 병, 글귀, 서비스 이름.
-import { bottleSVG } from './bottle.js';
+import { bottleSVG, seaBottleSVG } from './bottle.js';
 
 const W = 1080;
 const H = 1920;
@@ -110,7 +110,7 @@ export async function renderCard(bottle, time = 'day') {
   ctx.fillRect(0, HORIZON, W, 3);
 
   // 병
-  const svg = bottleSVG(bottle).replace('<svg ', '<svg width="300" height="600" ');
+  const svg = (bottle.special ? seaBottleSVG() : bottleSVG(bottle)).replace('<svg ', '<svg width="300" height="600" ');
   const img = await loadImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
   ctx.drawImage(img, (W - 300) / 2, HORIZON + 60, 300, 600);
 

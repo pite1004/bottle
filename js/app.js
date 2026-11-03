@@ -1,6 +1,9 @@
 // 화면 전환과 앱 상태.
 import { createSea } from './sea.js';
-import { bottleSVG, trashSVG, TRASH_NAMES, OPTIONS, DEFAULT_LOOK, optionLabel } from './bottle.js';
+import { bottleSVG, seaBottleSVG, trashSVG, TRASH_NAMES, OPTIONS, DEFAULT_LOOK, optionLabel } from './bottle.js';
+
+// 바다가 보낸 병은 전용 모양, 나머지는 보낸 사람이 꾸민 모양
+const anyBottleSVG = (b) => (b.special ? seaBottleSVG() : bottleSVG(b));
 import { checkText } from './moderation.js';
 import { renderCard, renderRecordCard, shareOrSave } from './card.js';
 import { createStory } from './intro.js';
@@ -73,6 +76,7 @@ let currentLetter = null;
 let letterFresh = false; // 방금 바다에서 건진 편지인지 (보관함에서 다시 보는 것과 구분)
 let currentFound = null;
 let seaReady = false;
+let seaNoticeTimer = 0;
 let draftReady = false; // 검사를 통과한 글귀가 있어야 꾸미기로 갈 수 있다
 let lastSent = null;
 
@@ -163,6 +167,16 @@ const sea = createSea($('scene'), {
     holdBtn.disabled = false;
     renderProgress(0);
     showFishPanel(true);
+  },
+  onSpecialAppear() {
+    // 작은 종소리 + 상단 안내 3초
+    sound.chime();
+    const notice = $('sea-notice');
+    notice.hidden = false;
+    notice.animate([{ opacity: 0, transform: 'translate(-50%, -8px)' }, { opacity: 1, transform: 'translate(-50%, 0)' }],
+      { duration: 400, easing: 'ease-out' });
+    clearTimeout(seaNoticeTimer);
+    seaNoticeTimer = setTimeout(() => { notice.hidden = true; }, 3000);
   },
   onEscape() {
     showFishPanel(false); // 당기다 놓쳐서 다시 흘러감
@@ -278,7 +292,7 @@ function showLetter(b, from = 'sea') {
   $('letter-from').hidden = !fromSea;
   $('report-btn').hidden = fromSea;
   $('star-btn').hidden = fromSea;
-  $('letter-bottle').innerHTML = bottleSVG(b);
+  $('letter-bottle').innerHTML = anyBottleSVG(b);
   const text = $('letter-text');
   text.className = `letter-text font-${b.font}`;
   if (fromSea) {
@@ -593,12 +607,13 @@ function renderCaught() {
   const view = store.load('bottle.caughtView', 'list');
   let html = '';
 
-  // 바다가 보낸 병은 맨 위에 따로
-  if (fromSea.length) {
+  // 바다가 보낸 병은 맨 위에 따로 (선반 보기면 선반 맨 윗칸에)
+  const shelfView = view === 'shelf' && list.length > 0;
+  if (fromSea.length && !shelfView) {
     html += `<p class="section-title">바다가 보낸 병</p>` + fromSea.map((r) => {
       const b = seaBottle(r.key, r.receivedAt);
       return `<button type="button" class="archive-item from-sea" data-sea="${r.key}">
-        <span class="archive-thumb">${bottleSVG(b)}</span>
+        <span class="archive-thumb">${seaBottleSVG()}</span>
         <span class="archive-main">
           <span class="archive-text">${esc(b.lines[0])}</span>
           <span class="archive-date">${formatDate(r.receivedAt)} · 바다로부터</span>
@@ -622,6 +637,12 @@ function renderCaught() {
     // 먼저 건진 것부터, 한 칸에 5개
     const ordered = list.slice().sort((a, b) => a.caughtAt - b.caughtAt);
     let rows = '';
+    if (fromSea.length) {
+      rows += `<div class="shelf-row"><p class="shelf-label">바다가 보낸 병</p><div class="shelf-items">${fromSea.map((r) => `
+        <button type="button" class="shelf-bottle sea" data-sea="${r.key}" aria-label="바다가 보낸 병 (${formatDate(r.receivedAt)})">
+          ${seaBottleSVG()}
+        </button>`).join('')}</div><div class="shelf-plank"></div></div>`;
+    }
     for (let i = 0; i < ordered.length; i += 5) {
       rows += `<div class="shelf-row"><div class="shelf-items">${ordered.slice(i, i + 5).map((b) => `
         <button type="button" class="shelf-bottle" data-id="${esc(b.id)}" aria-label="${esc(b.text.slice(0, 30))} (${formatDate(b.caughtAt)}에 건짐)">
@@ -872,7 +893,7 @@ let pendingFly = null;
 $('letter-return').addEventListener('click', () => {
   stats.track('letter_return');
   const svg = $('letter-bottle').querySelector('svg');
-  if (letterFresh && svg) pendingFly = { rect: svg.getBoundingClientRect(), svg: bottleSVG(currentLetter) };
+  if (letterFresh && svg) pendingFly = { rect: svg.getBoundingClientRect(), svg: anyBottleSVG(currentLetter) };
 });
 
 $('found-return').addEventListener('click', () => {

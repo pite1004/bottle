@@ -140,6 +140,25 @@ export function setEnabled(on) {
   apply();
 }
 
+// 바다가 보낸 병이 나타날 때: 작은 종소리 (맑은 사인파 세 개가 차례로 울리고 사라진다)
+export function chime() {
+  if (!ctx || !enabled || ctx.state !== 'running') return;
+  const now = ctx.currentTime;
+  [1318.5, 1975.5, 2637].forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    const g = ctx.createGain();
+    const t = now + i * 0.12;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.22 / (i + 1), t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
+    osc.connect(g).connect(master);
+    osc.start(t);
+    osc.stop(t + 1.7);
+  });
+}
+
 // 병을 띄울 때 잠깐 줄였다가 되돌린다.
 export function dip() {
   if (!ctx || !enabled) return;

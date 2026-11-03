@@ -431,18 +431,124 @@ h1, h2, p { margin: 0; }
   mask-image: linear-gradient(#000 74%, rgba(0, 0, 0, .25) 86%, transparent 96%);
 }
 
-/* 바다가 보낸 병: 은은하게 빛난다 */
-.floater.special svg {
-  animation: sea-glow 2.6s ease-in-out infinite;
+/* ---------- 바다가 보낸 병: 일반 병엔 절대 없는 효과 ---------- */
+.floater.special { overflow: visible; }
+.floater.special svg { position: relative; z-index: 2; }
+
+/* 병 뒤 따뜻한 금빛 후광 (2.5초 주기) */
+.sea-halo {
+  position: absolute;
+  left: 50%;
+  top: 70%;
+  width: 170%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 222, 140, .75) 0%, rgba(255, 196, 100, .35) 38%, rgba(255, 190, 90, 0) 68%);
+  transform: translate(-50%, -50%) scale(.85);
+  animation: sea-halo 2.5s ease-in-out infinite;
+  pointer-events: none;
 }
 
-@keyframes sea-glow {
-  0%, 100% { filter: drop-shadow(0 0 4px rgba(255, 238, 180, .8)) drop-shadow(0 0 10px rgba(255, 214, 130, .45)); }
-  50% { filter: drop-shadow(0 0 8px rgba(255, 238, 180, 1)) drop-shadow(0 0 20px rgba(255, 214, 130, .75)); }
+#app[data-time="night"] .sea-halo {
+  background: radial-gradient(circle, rgba(255, 230, 160, 1) 0%, rgba(255, 200, 110, .6) 38%, rgba(255, 190, 90, 0) 70%);
+  width: 210%;
 }
+
+@keyframes sea-halo {
+  0%, 100% { transform: translate(-50%, -50%) scale(.82); opacity: .75; }
+  50% { transform: translate(-50%, -50%) scale(1.12); opacity: 1; }
+}
+
+/* 병 위로 희미한 빛줄기 */
+.sea-beam {
+  position: absolute;
+  left: 50%;
+  bottom: 62%;
+  width: 34%;
+  height: 150%;
+  background: linear-gradient(to top, rgba(255, 236, 180, .55), rgba(255, 236, 180, 0));
+  filter: blur(5px);
+  transform: translateX(-50%);
+  animation: sea-beam 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes sea-beam {
+  0%, 100% { opacity: .45; }
+  50% { opacity: .9; }
+}
+
+/* 위로 떠오르는 반짝이는 입자 */
+.sea-spark {
+  position: absolute;
+  left: var(--x);
+  bottom: 30%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff6cf;
+  box-shadow: 0 0 8px 3px rgba(255, 220, 130, .8);
+  transform: scale(var(--s));
+  opacity: 0;
+  animation: sea-spark 3.6s linear infinite;
+  animation-delay: var(--d);
+  pointer-events: none;
+}
+
+@keyframes sea-spark {
+  0% { transform: translateY(0) scale(var(--s)); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translateY(-140px) scale(calc(var(--s) * .4)); opacity: 0; }
+}
+
+/* 수면에 길게 비치는 금빛 반사광 */
+.sea-reflect {
+  position: absolute;
+  left: 50%;
+  top: 90%;
+  width: 70%;
+  height: 90%;
+  background: linear-gradient(rgba(255, 214, 120, .7), rgba(255, 214, 120, 0));
+  filter: blur(3px);
+  transform: translateX(-50%);
+  -webkit-mask-image: repeating-linear-gradient(#000 0 5px, rgba(0, 0, 0, .25) 8px, #000 11px);
+  mask-image: repeating-linear-gradient(#000 0 5px, rgba(0, 0, 0, .25) 8px, #000 11px);
+  pointer-events: none;
+}
+
+/* 건질 때: 금빛 물보라 + 화면 전체가 잠깐 따뜻하게 */
+.drop.gold { background: #ffd978; box-shadow: 0 0 6px 2px rgba(255, 210, 110, .7); }
+
+.warm-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 65;
+  background: radial-gradient(ellipse at 50% 65%, rgba(255, 220, 150, .75), rgba(255, 190, 110, .35) 55%, rgba(255, 170, 90, .15));
+  pointer-events: none;
+}
+
+/* 등장 안내 */
+.sea-notice {
+  position: absolute;
+  left: 50%;
+  top: calc(max(12px, env(safe-area-inset-top)) + 72px);
+  z-index: 57;
+  padding: 10px 18px;
+  border-radius: 22px;
+  background: rgba(40, 32, 18, .82);
+  color: #ffe9b0;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.sea-notice[hidden] { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .floater.special svg { animation: none; filter: drop-shadow(0 0 6px rgba(255, 238, 180, .9)); }
+  .sea-halo, .sea-beam { animation: none; }
+  .sea-spark { display: none; }
 }
 
 .rod {
@@ -1740,3 +1846,7 @@ button.archive-item { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .glints { animation: glint-flow 36s linear infinite; }
 }
+
+.shelf-label { margin: 0 4px 4px; font-size: 12px; color: #6b5a40; }
+.shelf-bottle.sea { width: 52px; height: 96px; }
+.shelf-bottle.sea svg { filter: drop-shadow(0 0 6px rgba(255, 220, 140, .9)); }
