@@ -207,7 +207,8 @@ const sea = createSea($('scene'), {
       queueCoach('caught');
       showLetter(f.data);
       location.hash = 'letter';
-      loadSea();
+      seaPool = seaPool.filter((b) => b.id !== f.data.id);
+      sea.setPool(seaPool);
       checkSeaGifts();
     } else {
       queueCoach('trash');
@@ -266,10 +267,13 @@ $('release-btn').addEventListener('click', () => {
   releaseFish();
 });
 
+// 바다 목록은 앱을 열 때 한 번만 받는다 (병 60개 = 읽기 60회라 무료 한도를 아끼려고)
+let seaPool = [];
+
 async function loadSea() {
   try {
-    const list = params.has('empty') ? [] : await store.listSeaBottles();
-    sea.setPool(list);
+    seaPool = params.has('empty') ? [] : await store.listSeaBottles();
+    sea.setPool(seaPool);
   } catch (err) {
     console.error(err);
     toast('바다에 연결하지 못했어요. 잠시 뒤 다시 열어 주세요');
@@ -553,7 +557,6 @@ async function launch(chosenLook) {
   sound.dip();
   queueCoach('sent');
   location.replace('#sent');
-  loadSea();
 }
 
 $('launch-btn').addEventListener('click', () => launch(look()));
