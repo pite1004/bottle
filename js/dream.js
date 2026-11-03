@@ -14,7 +14,7 @@ export const LINES = [
   { part: 'rise', text: '한 번만 더 해볼걸.' },
   { part: 'rise', text: '그랬다면 이 바다는, 조금 덜 차올랐을까요?', time: 4000 },
   { part: 'wake', text: '다시, 2100년.' },
-  { part: 'after', text: '그리고 당신은, 아직 그날에 살고 있어요.', time: 4500 },
+  { part: 'after', text: '하지만 당신은, 아직 그날에 살고 있어요.', time: 4500 },
 ];
 
 const LINE_TIME = 3000;
