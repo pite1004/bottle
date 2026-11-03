@@ -202,6 +202,26 @@ export async function listMyBottles() {
   return list.sort((a, b) => b.createdAt - a.createdAt);
 }
 
+// 내 병의 여정: 병 문서 + 건진 기록(catches 하위 문서: 시각·시간대만)
+export async function getJourney(id) {
+  await ensureReady();
+  if (fb) {
+    const { doc, getDoc, collection, getDocs } = fb.fs;
+    const [snap, caught] = await Promise.all([
+      getDoc(doc(fb.db, 'bottles', id)),
+      getDocs(collection(fb.db, 'bottles', id, 'catches')),
+    ]);
+    if (!snap.exists()) return null;
+    const catches = caught.docs.map((d) => {
+      const c = d.data();
+      return { at: c.caughtAt && c.caughtAt.toMillis ? c.caughtAt.toMillis() : Date.now(), timeOfDay: c.timeOfDay };
+    }).sort((a, b) => a.at - b.at);
+    return { bottle: fromDoc(snap), catches };
+  }
+  const bottle = demoBottles().find((b) => b.id === id);
+  return bottle ? { bottle, catches: [] } : null;
+}
+
 // 띄우기: 새 병 저장 후, 이 기기의 "띄운 병" 목록에 id를 남긴다.
 export async function createBottle({ text, font, shape, color, cork, inside }) {
   await ensureReady();

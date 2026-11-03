@@ -1850,3 +1850,103 @@ button.archive-item { cursor: pointer; }
 .shelf-label { margin: 0 4px 4px; font-size: 12px; color: #6b5a40; }
 .shelf-bottle.sea { width: 52px; height: 96px; }
 .shelf-bottle.sea svg { filter: drop-shadow(0 0 6px rgba(255, 220, 140, .9)); }
+
+/* ---------- 10 내 병의 여정 ---------- */
+.hide-text-btn {
+  margin-left: auto;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid #c5cbd2;
+  border-radius: 12px;
+  background: #fff;
+  color: #1f2328;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.hide-text-btn[aria-pressed="true"] { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-ink); }
+
+.journey-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 20px;
+  background: linear-gradient(#e3edf5, #d3dde6);
+}
+
+.journey-bottle { flex: none; width: 56px; height: 112px; }
+.journey-bottle svg { width: 100%; height: 100%; display: block; }
+
+.journey-text {
+  flex: 1;
+  color: #2a2620;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.journey-text.font-pen { font-size: 24px; }
+.journey-text.font-round { font-size: 19px; }
+.journey-text.font-mono { font-size: 15px; }
+.journey-text.hidden-text { font-size: 14px; color: #5b6370; font-style: italic; }
+
+.journey-loading { text-align: center; color: #5b6370; font-size: 14px; }
+.journey-body { display: flex; flex-direction: column; gap: 14px; }
+.journey-body[hidden] { display: none; }
+
+.journey-big {
+  text-align: center;
+  font-size: 30px;
+  font-weight: 700;
+  color: #1d4a6b;
+  word-break: keep-all;
+}
+
+.journey-sub { margin-top: -8px; text-align: center; color: #5b6370; }
+.journey-sub[hidden] { display: none; }
+
+.journey-facts {
+  margin: 0;
+  padding: 14px 16px 14px 32px;
+  border: 1px solid #c5cbd2;
+  border-radius: 14px;
+  background: #fff;
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+.journey-tod { display: flex; flex-direction: column; gap: 8px; }
+.journey-tod[hidden] { display: none; }
+
+.tod-row { display: grid; grid-template-columns: 36px 1fr 40px; gap: 10px; align-items: center; font-size: 13px; }
+.tod-track { height: 10px; border-radius: 5px; background: #e3e8ee; overflow: hidden; }
+.tod-fill { height: 100%; border-radius: 5px; }
+.tod-day .tod-fill { background: #e3b23c; }
+.tod-sunset .tod-fill { background: #d9826a; }
+.tod-night .tod-fill { background: #3d5f8c; }
+.tod-num { text-align: right; font-variant-numeric: tabular-nums; color: #5b6370; }
+
+.journey-timeline { padding: 18px 10px 4px; }
+
+.tl-track {
+  position: relative;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #9fb7cc, #2f6f9f);
+}
+
+.tl-dot {
+  position: absolute;
+  top: 50%;
+  border-radius: 50%;
+  background: #e3b23c;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
+  transform: translate(-50%, -50%);
+}
+
+.tl-labels { display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; color: #5b6370; }
+.tl-note { margin-top: 6px; font-size: 12px; color: #5b6370; }
+
+button.archive-item[data-journey] .badge { pointer-events: none; }

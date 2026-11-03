@@ -309,6 +309,35 @@
       </div>
     </section>
 
+    <!-- 10 내 병의 여정 -->
+    <section class="screen screen-page" id="screen-journey" data-route="journey" hidden>
+      <header class="subbar">
+        <a class="icon-btn" href="#archive?tab=sent" aria-label="보관함으로 돌아가기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <h2>내 병의 여정</h2>
+        <button class="hide-text-btn" id="journey-hide" type="button" aria-pressed="false">글귀 가리기</button>
+      </header>
+      <div class="page-body">
+        <div class="journey-hero">
+          <div class="journey-bottle" id="journey-bottle"></div>
+          <p class="journey-text" id="journey-text"></p>
+        </div>
+        <p class="journey-loading" id="journey-loading">여정을 불러오는 중…</p>
+        <div class="journey-body" id="journey-body" hidden>
+          <p class="journey-big" id="journey-big"></p>
+          <p class="journey-sub" id="journey-sub" hidden></p>
+          <ul class="journey-facts" id="journey-facts"></ul>
+          <div class="journey-tod" id="journey-tod" aria-label="낮·노을·밤에 건진 비율"></div>
+          <div class="journey-timeline" id="journey-timeline" aria-label="띄운 뒤 건진 시점"></div>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-primary" type="button" id="journey-share">스토리에 공유하기</button>
+          <button class="btn btn-secondary" type="button" id="journey-save">이미지 저장</button>
+        </div>
+      </div>
+    </section>
+
     <!-- 아직 만들지 않은 화면 -->
     <section class="screen screen-soon" id="screen-soon" data-route="soon" hidden>
       <header class="subbar">

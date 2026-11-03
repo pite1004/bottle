@@ -5,7 +5,8 @@ import { bottleSVG, seaBottleSVG, trashSVG, TRASH_NAMES, OPTIONS, DEFAULT_LOOK, 
 // 바다가 보낸 병은 전용 모양, 나머지는 보낸 사람이 꾸민 모양
 const anyBottleSVG = (b) => (b.special ? seaBottleSVG() : bottleSVG(b));
 import { checkText } from './moderation.js';
-import { renderCard, renderRecordCard, shareOrSave } from './card.js';
+import { renderCard, renderRecordCard, renderJourneyCard, shareOrSave } from './card.js';
+import { computeJourney, renderJourneyView } from './journey.js';
 import { createStory } from './intro.js';
 import { createCoach, coachSeen, flyTo, bounce } from './guide.js';
 import { checkMilestones, pendingSeaBottles, receive, listReceived, seaBottle } from './seasent.js';
@@ -69,6 +70,7 @@ const screens = {
   sent: $('screen-sent'),
   archive: $('screen-archive'),
   record: $('screen-record'),
+  journey: $('screen-journey'),
   soon: $('screen-soon'),
 };
 
@@ -81,7 +83,8 @@ let draftReady = false; // 검사를 통과한 글귀가 있어야 꾸미기로 
 let lastSent = null;
 
 function route() {
-  const name = location.hash.replace('#', '').split('?')[0] || 'sea';
+  // '#journey/병ID'처럼 화면 이름 뒤에 값이 붙을 수 있다
+  const [name, arg] = (location.hash.replace('#', '').split('?')[0] || 'sea').split('/');
   let target = screens[name] && name !== 'soon' ? name : SOON_TITLES[name] ? 'soon' : 'sea';
   // 새로고침 등으로 보여 줄 내용이 없으면 바다로
   if ((target === 'letter' && !currentLetter) || (target === 'found' && !currentFound)
@@ -105,6 +108,10 @@ function route() {
   if (target === 'record') {
     stats.track('record_open');
     renderRecord();
+  }
+  if (target === 'journey') {
+    stats.track('journey_open');
+    openJourney(arg);
   }
   if (target === 'archive') {
     stats.track('archive_open');
@@ -680,7 +687,7 @@ async function renderSentList() {
     return;
   }
   archivePanel.innerHTML = list.map((b) => `
-    <div class="archive-item">
+    <button type="button" class="archive-item" data-journey="${esc(b.id)}" aria-label="${esc(b.text.slice(0, 30))}의 여정 보기">
       <span class="archive-thumb">${bottleSVG(b)}</span>
       <span class="archive-main">
         <span class="archive-text">${esc(b.text)}</span>
@@ -689,7 +696,7 @@ async function renderSentList() {
           ? `<span class="badge reached">${b.catches}명에게 닿았어요</span>`
           : `<span class="badge">아직 떠다니는 중</span>`}
       </span>
-    </div>`).join('');
+    </button>`).join('');
 }
 
 function renderCollect() {
@@ -738,6 +745,10 @@ archivePanel.addEventListener('click', (e) => {
   }
   const item = e.target.closest('button.archive-item, button.shelf-bottle');
   if (!item) return;
+  if (item.dataset.journey) {
+    location.hash = `journey/${item.dataset.journey}`;
+    return;
+  }
   if (item.dataset.sea) {
     const r = listReceived().find((x) => x.key === item.dataset.sea);
     if (r) showLetter(seaBottle(r.key, r.receivedAt), 'archive');
@@ -748,6 +759,61 @@ archivePanel.addEventListener('click', (e) => {
   }
   location.hash = 'letter';
 });
+
+// ---------- 10 내 병의 여정 ----------
+let journey = null; // computeJourney() 결과
+
+function journeyHidden() {
+  return store.load('bottle.journeyHideText', false);
+}
+
+function drawJourney() {
+  const hide = journeyHidden();
+  const btn = $('journey-hide');
+  btn.setAttribute('aria-pressed', String(hide));
+  btn.textContent = hide ? '글귀 보이기' : '글귀 가리기';
+  const svg = bottleSVG(journey.look);
+  renderJourneyView(journey, hide, svg);
+  cardMeta = { kind: 'journey', b: journey.id };
+  cardPromise = renderJourneyCard(journey, hide, app.dataset.time, svg);
+  cardPromise.catch((err) => console.error(err));
+}
+
+async function openJourney(id) {
+  if (!id) {
+    location.replace('#archive?tab=sent');
+    return;
+  }
+  journey = null;
+  cardPromise = null;
+  $('journey-loading').hidden = false;
+  $('journey-loading').textContent = '여정을 불러오는 중…';
+  $('journey-body').hidden = true;
+  $('journey-bottle').innerHTML = '';
+  $('journey-text').textContent = '';
+  try {
+    const res = await store.getJourney(id);
+    if (screens.journey.hidden) return; // 기다리는 사이 다른 화면으로 갔으면
+    if (!res) {
+      $('journey-loading').textContent = '이 병을 찾지 못했어요';
+      return;
+    }
+    journey = computeJourney(res.bottle, res.catches);
+    $('journey-loading').hidden = true;
+    $('journey-body').hidden = false;
+    drawJourney();
+  } catch (err) {
+    console.error(err);
+    $('journey-loading').textContent = '여정을 불러오지 못했어요. 잠시 뒤 다시 열어 주세요';
+  }
+}
+
+$('journey-hide').addEventListener('click', () => {
+  store.save('bottle.journeyHideText', !journeyHidden());
+  if (journey) drawJourney();
+});
+$('journey-share').addEventListener('click', () => deliverCard('share'));
+$('journey-save').addEventListener('click', () => deliverCard('save'));
 
 // ---------- 나의 바다 기록 ----------
 function recordStats(reached) {
@@ -976,6 +1042,7 @@ function checkSeaGifts() {
 // 내 병들의 catches 합계가 지난번보다 늘었으면 알려 준다
 const newsBanner = $('news-banner');
 let newsTimer = 0;
+let newsTarget = null;
 
 async function checkNews() {
   let mine;
@@ -988,6 +1055,15 @@ async function checkNews() {
   const total = mine.reduce((sum, b) => sum + (b.catches || 0), 0);
   const prev = store.load('bottle.catchTotal', null);
   store.save('bottle.catchTotal', total);
+  // 병마다 지난번보다 얼마나 늘었는지 → 알림을 누르면 가장 많이 늘어난 병의 여정
+  const prevMap = store.load('bottle.catchMap', {});
+  let best = null, bestGain = 0;
+  for (const b of mine) {
+    const gain = (b.catches || 0) - (prevMap[b.id] || 0);
+    if (gain > bestGain) { bestGain = gain; best = b.id; }
+  }
+  store.save('bottle.catchMap', Object.fromEntries(mine.map((b) => [b.id, b.catches || 0])));
+  newsTarget = best;
   checkSeaGifts();
   if (prev === null || total <= prev) return;
   store.save('bottle.newsDot', true);
@@ -1007,7 +1083,7 @@ async function checkNews() {
 
 newsBanner.addEventListener('click', () => {
   newsBanner.hidden = true;
-  location.hash = 'archive?tab=sent';
+  location.hash = newsTarget ? `journey/${newsTarget}` : 'archive?tab=sent';
 });
 
 // ---------- 시작 ----------

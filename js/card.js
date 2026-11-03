@@ -233,6 +233,142 @@ export async function renderRecordCard(stats, quote, time = 'day') {
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
 }
 
+// 내 병의 여정 카드. j: computeJourney() 결과, svg: 병 그림. 이름·uid 등 식별 정보는 넣지 않는다.
+export async function renderJourneyCard(j, hideText, time = 'day', svg) {
+  const pal = PALETTE[time] || PALETTE.day;
+  const f = FONT[j.font] || FONT.pen;
+  const textSize = Math.round(f.size * 0.75);
+  await Promise.all([
+    document.fonts.load('700 88px "Noto Sans KR"', '0123456789명에게 닿았어요 내 병을 건져줄 사람?'),
+    hideText ? null : document.fonts.load(`${textSize}px "${f.family}"`, j.text),
+  ]).catch(() => {});
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  let g = ctx.createLinearGradient(0, 0, 0, HORIZON);
+  g.addColorStop(0, pal.sky[0]);
+  g.addColorStop(1, pal.sky[1]);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, HORIZON);
+  g = ctx.createLinearGradient(0, HORIZON, 0, H);
+  g.addColorStop(0, pal.sea[0]);
+  g.addColorStop(1, pal.sea[1]);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, HORIZON, W, H - HORIZON);
+  drawCity(ctx, pal.city);
+
+  // 제목: 0명이면 초대용 문구
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = pal.ink;
+  if (j.reached > 0) {
+    ctx.font = '500 42px "Noto Sans KR"';
+    ctx.fillText('내 병이 바다를 건너', W / 2, 210);
+    ctx.font = '700 88px "Noto Sans KR"';
+    ctx.fillText(`${j.reached}명에게 닿았어요`, W / 2, 310);
+  } else {
+    ctx.font = '700 80px "Noto Sans KR"';
+    ctx.fillText('내 병을 건져줄 사람?', W / 2, 240);
+    ctx.fillStyle = pal.sub;
+    ctx.font = '34px "Noto Sans KR"';
+    ctx.fillText('아직 바다를 건너는 중이에요', W / 2, 320);
+  }
+
+  // 병
+  const img = await loadImage('data:image/svg+xml;charset=utf-8,'
+    + encodeURIComponent(svg.replace('<svg ', '<svg width="220" height="440" ')));
+  ctx.drawImage(img, (W - 220) / 2, 420, 220, 440);
+
+  let y = 900;
+  // 글귀 (가리기 상태면 넣지 않음)
+  if (!hideText) {
+    ctx.font = `${textSize}px "${f.family}"`;
+    const lines = wrap(ctx, j.text, 780).slice(0, 3);
+    const lineH = textSize * f.line;
+    const h = lines.length * lineH + 80;
+    ctx.fillStyle = 'rgba(251,247,236,.94)';
+    roundRect(ctx, 100, y, W - 200, h, 32);
+    ctx.fill();
+    ctx.fillStyle = '#2a2620';
+    lines.forEach((line, i) => ctx.fillText(line, W / 2, y + 40 + lineH * (i + 0.5)));
+    y += h + 50;
+  } else {
+    y += 20;
+  }
+
+  // 타임라인 축소판
+  const x0 = 150, x1 = W - 150;
+  ctx.fillStyle = 'rgba(255,255,255,.88)';
+  roundRect(ctx, 100, y, W - 200, 170 + (j.recorded ? 190 : 0), 32);
+  ctx.fill();
+  const ty = y + 70;
+  ctx.strokeStyle = '#2f6f9f';
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x0, ty);
+  ctx.lineTo(x1, ty);
+  ctx.stroke();
+  const maxN = Math.max(1, ...j.points.map((p) => p.n));
+  for (const p of j.points) {
+    const r = j.grouped ? 10 + (p.n / maxN) * 14 : 13;
+    ctx.beginPath();
+    ctx.arc(x0 + (x1 - x0) * p.pos, ty, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#e3b23c';
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#fff';
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#5b6370';
+  ctx.font = '28px "Noto Sans KR"';
+  ctx.textAlign = 'left';
+  const d = new Date(j.createdAt);
+  ctx.fillText(`${d.getMonth() + 1}.${String(d.getDate()).padStart(2, '0')} 띄움`, x0 - 10, ty + 60);
+  ctx.textAlign = 'right';
+  ctx.fillText(`지금 · ${j.days}일째`, x1 + 10, ty + 60);
+
+  // 낮 · 노을 · 밤 비율
+  if (j.recorded) {
+    const total = j.counts.day + j.counts.sunset + j.counts.night;
+    const rows = [['낮', j.counts.day, '#e3b23c'], ['노을', j.counts.sunset, '#d9826a'], ['밤', j.counts.night, '#3d5f8c']];
+    rows.forEach(([label, n, color], i) => {
+      const ry = ty + 140 + i * 56;
+      const pctv = total ? n / total : 0;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#1f2328';
+      ctx.font = '30px "Noto Sans KR"';
+      ctx.fillText(label, x0, ry);
+      ctx.fillStyle = '#e3e8ee';
+      roundRect(ctx, x0 + 100, ry - 12, x1 - x0 - 220, 24, 12);
+      ctx.fill();
+      if (pctv > 0) {
+        ctx.fillStyle = color;
+        roundRect(ctx, x0 + 100, ry - 12, Math.max(24, (x1 - x0 - 220) * pctv), 24, 12);
+        ctx.fill();
+      }
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#5b6370';
+      ctx.fillText(`${Math.round(pctv * 100)}%`, x1, ry);
+    });
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = pal.ink;
+  ctx.font = '700 34px "Noto Sans KR"';
+  ctx.fillText('유리병 편지', W / 2, H - 120);
+  ctx.fillStyle = pal.sub;
+  ctx.font = '28px "Noto Sans KR"';
+  ctx.fillText('2100년 · 잠긴 바다', W / 2, H - 74);
+  ctx.font = '26px "Noto Sans KR"';
+  ctx.fillText(location.host, W / 2, H - 34);
+
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+}
+
 const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent)
   || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
