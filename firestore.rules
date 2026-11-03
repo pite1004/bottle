@@ -6,7 +6,9 @@ service cloud.firestore {
     match /bottles/{id} {
       allow read: if true;
 
+      // 문서 ID = "{내 uid}_{1~10}" 일 때만 → 같은 ID는 한 번만 만들 수 있어서 1인당 최대 10개
       allow create: if request.auth != null
+        && id.matches('^' + request.auth.uid + '_([1-9]|10)$')
         && request.resource.data.keys().hasOnly(['text','font','shape','color','cork','inside','owner','catches','stars','reports','hidden','createdAt'])
         && request.resource.data.owner == request.auth.uid
         && request.resource.data.text is string
@@ -156,7 +158,7 @@ service cloud.firestore {
             'session_start','intro_start','intro_complete','intro_skip',
             'cast','hooked','pull_release','catch_letter','catch_trash','catch_sea_bottle',
             'letter_star','letter_report','letter_return',
-            'write_start','write_blocked','decorate_open','bottle_launch',
+            'write_start','write_blocked','decorate_open','bottle_launch','write_limit_reached','launch_cooldown',
             'share_card','save_image',
             'archive_open','shelf_open','journey_open','record_open','replay_intro']
         && request.resource.data.at == request.time

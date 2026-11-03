@@ -77,7 +77,8 @@
       <footer class="bottom">
         <div class="bottom-idle" id="bottom-idle">
           <p class="hint">바다를 탭하면 그곳으로 바늘을 던져요</p>
-          <a class="btn btn-primary" href="#write">나도 병 띄우기</a>
+          <a class="btn btn-primary" href="#write" id="sea-write-btn">나도 병 띄우기</a>
+          <p class="quota" id="quota-sea" hidden></p>
         </div>
 
         <!-- 02·03 걸림 · 끌어올리기 -->
@@ -171,6 +172,7 @@
         <span class="step">1 / 2</span>
       </header>
       <form class="page-body" id="write-form" novalidate>
+        <p class="quota quota-top" id="quota-write" hidden></p>
         <label class="field-label" for="write-text">누구에게든, 아무에게도 아닌 한 줄</label>
         <div class="paper">
           <textarea id="write-text" class="font-pen" maxlength="100" rows="4"
@@ -241,6 +243,7 @@
           <h2>병이 바다로 떠났어요</h2>
           <p>지금 이 기기에 기록됐어요</p>
         </div>
+        <p class="last-one" id="sent-last" hidden>이제 병이 하나 남았어요. 가장 전하고 싶은 이야기를 위해 아껴두세요</p>
         <div class="share-row">
           <div class="share-card" id="share-card" aria-label="공유 카드 미리보기">
             <div class="share-sky"></div>
@@ -334,6 +337,27 @@
         <div class="page-actions">
           <button class="btn btn-primary" type="button" id="journey-share">스토리에 공유하기</button>
           <button class="btn btn-secondary" type="button" id="journey-save">이미지 저장</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 병을 모두 띄웠을 때 -->
+    <section class="screen screen-page" id="screen-full" data-route="full" hidden>
+      <header class="subbar">
+        <a class="icon-btn" href="#sea" aria-label="바다로 돌아가기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <h2>내 병 지켜보기</h2>
+      </header>
+      <div class="page-body full-body">
+        <div class="full-shelf" id="full-shelf" aria-hidden="true"></div>
+        <div class="full-copy">
+          <p class="full-title">준비한 병을 모두 바다에 띄웠어요.</p>
+          <p>이제 당신의 병들이 누구에게 닿는지 지켜봐 주세요.</p>
+        </div>
+        <div class="page-actions">
+          <a class="btn btn-primary" href="#archive?tab=sent">내 병의 여정 보기</a>
+          <a class="btn btn-secondary" href="#sea">바다로 돌아가기</a>
         </div>
       </div>
     </section>

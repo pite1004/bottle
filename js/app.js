@@ -71,6 +71,7 @@ const screens = {
   archive: $('screen-archive'),
   record: $('screen-record'),
   journey: $('screen-journey'),
+  full: $('screen-full'),
   soon: $('screen-soon'),
 };
 
@@ -99,7 +100,17 @@ function route() {
   for (const [key, el] of Object.entries(screens)) el.hidden = key !== target;
   $('demo-badge').hidden = store.mode !== 'demo' || target !== 'sea';
   if (target === 'soon') $('soon-title').textContent = SOON_TITLES[name];
-  if (target === 'write') stats.track('write_start');
+  if (target === 'write') {
+    const blocked = writeBlocked();
+    if (blocked) {
+      history.replaceState(null, '', blocked === 'full' ? '#full' : '#sea');
+      route();
+      return;
+    }
+    stats.track('write_start');
+    renderQuota();
+  }
+  if (target === 'full') renderFull();
   if (target === 'decorate') {
     stats.track('decorate_open');
     renderDecorate();
@@ -535,17 +546,33 @@ let launching = false;
 
 async function launch(chosenLook) {
   if (launching) return;
+  // 05에서 오래 머물렀을 수 있으니 띄우기 직전에도 확인
+  const blocked = writeBlocked();
+  if (blocked) {
+    if (blocked === 'full') location.hash = 'full';
+    return;
+  }
   launching = true;
   let bottle;
   try {
     bottle = await store.createBottle({ text: draft.text, font: draft.font, ...chosenLook });
   } catch (err) {
     console.error(err);
-    toast('병을 띄우지 못했어요. 잠시 뒤 다시 해 주세요');
+    if (err instanceof store.BottleLimitError) {
+      myBottleCount = store.MAX_BOTTLES;
+      renderQuota();
+      stats.track('write_limit_reached');
+      location.hash = 'full';
+    } else {
+      toast('병을 띄우지 못했어요. 잠시 뒤 다시 해 주세요');
+    }
     return;
   } finally {
     launching = false;
   }
+  store.save('bottle.lastLaunch', Date.now());
+  myBottleCount = (myBottleCount ?? 0) + 1;
+  renderQuota();
   stats.track('bottle_launch', chosenLook === DEFAULT_LOOK ? 'plain' : 'custom');
   lastSent = bottle;
   draft.text = '';
@@ -562,8 +589,70 @@ async function launch(chosenLook) {
 $('launch-btn').addEventListener('click', () => launch(look()));
 $('launch-plain-btn').addEventListener('click', () => launch(DEFAULT_LOOK));
 
+// ---------- 병 띄우기 1인당 10개 · 연속 띄우기 1분 간격 ----------
+const LAUNCH_GAP = 60 * 1000;
+let myBottleCount = null; // 내가 띄운 병 수 (모르면 null → 막지 않음)
+
+function remaining() {
+  return myBottleCount == null ? null : Math.max(0, store.MAX_BOTTLES - myBottleCount);
+}
+
+function renderQuota() {
+  const left = remaining();
+  const known = left != null;
+  const seaQuota = $('quota-sea');
+  const writeQuota = $('quota-write');
+  seaQuota.hidden = !known;
+  writeQuota.hidden = !known;
+  if (!known) return;
+  seaQuota.textContent = `남은 병 ${left} / ${store.MAX_BOTTLES}`;
+  writeQuota.textContent = `남은 병 ${left} / ${store.MAX_BOTTLES}`;
+  // 다 띄운 뒤엔 "내 병 지켜보기"
+  const btn = $('sea-write-btn');
+  btn.textContent = left === 0 ? '내 병 지켜보기' : '나도 병 띄우기';
+  btn.setAttribute('href', left === 0 ? '#full' : '#write');
+}
+
+// 05로 가도 되는지: 'full'(10개 다 씀) / 'cooldown'(1분 안) / null(괜찮음). 막히면 안내·통계까지
+function writeBlocked() {
+  if (remaining() === 0) {
+    stats.track('write_limit_reached');
+    return 'full';
+  }
+  const since = Date.now() - store.load('bottle.lastLaunch', 0);
+  if (since < LAUNCH_GAP) {
+    stats.track('launch_cooldown');
+    toast('잠깐 바다를 바라보다가 다시 띄워볼까요?');
+    return 'cooldown';
+  }
+  return null;
+}
+
+// 05로 가는 모든 버튼(바다·편지·보관함의 "나도 병 띄우기" 등)
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[href="#write"]');
+  if (!a) return;
+  const blocked = writeBlocked();
+  if (!blocked) return;
+  e.preventDefault();
+  if (blocked === 'full') location.hash = 'full';
+});
+
+// 병을 모두 띄웠을 때: 내가 꾸민 병들을 작게 늘어놓는다
+async function renderFull() {
+  const box = $('full-shelf');
+  box.innerHTML = '';
+  try {
+    const mine = await store.listMyBottles();
+    if (!screens.full.hidden) box.innerHTML = mine.map((b) => bottleSVG(b)).join('');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
 // ---------- 07 띄우기 완료 ----------
 function renderSent(b) {
+  $('sent-last').hidden = remaining() !== 1;
   $('sent-bottle').innerHTML = bottleSVG(b);
   $('share-bottle').innerHTML = bottleSVG(b);
   const text = $('share-text');
@@ -685,11 +774,13 @@ async function renderSentList() {
     return;
   }
   if (archiveTab !== 'sent') return; // 기다리는 사이 다른 탭으로 옮겼으면 그리지 않는다
+  myBottleCount = list.length;
+  renderQuota();
   if (list.length === 0) {
     archivePanel.innerHTML = `<div class="archive-empty">띄운 병이 누군가에게 닿으면<br>여기에 숫자가 올라가요<a class="btn btn-primary" href="#write">병 띄우기</a></div>`;
     return;
   }
-  archivePanel.innerHTML = list.map((b) => `
+  archivePanel.innerHTML = `<p class="quota-archive">띄운 병 ${list.length} / ${store.MAX_BOTTLES}</p>` + list.map((b) => `
     <button type="button" class="archive-item" data-journey="${esc(b.id)}" aria-label="${esc(b.text.slice(0, 30))}의 여정 보기">
       <span class="archive-thumb">${bottleSVG(b)}</span>
       <span class="archive-main">
@@ -1058,6 +1149,8 @@ async function checkNews() {
   const total = mine.reduce((sum, b) => sum + (b.catches || 0), 0);
   const prev = store.load('bottle.catchTotal', null);
   store.save('bottle.catchTotal', total);
+  myBottleCount = mine.length;
+  renderQuota();
   // 병마다 지난번보다 얼마나 늘었는지 → 알림을 누르면 가장 많이 늘어난 병의 여정
   const prevMap = store.load('bottle.catchMap', {});
   let best = null, bestGain = 0;

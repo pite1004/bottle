@@ -81,6 +81,7 @@ async function load() {
     // 큰 숫자
     const [
       visitors, revisit, bottles, letters, catchers, trash, shares, saves, viaCard,
+      allTen, launchers, launchedSum,
     ] = await all([
       () => count(col('visitors')),
       () => count(where('visitors', ['visitCount', '>=', 2])),
@@ -91,6 +92,9 @@ async function load() {
       () => count(ev(['type', '==', 'share_card'])),
       () => count(ev(['type', '==', 'save_image'])),
       () => count(where('visitors', ['firstSource', 'in', ['card', 'journey', 'record']])),
+      () => count(where('visitors', ['bottlesLaunched', '>=', 10])),
+      () => count(where('visitors', ['bottlesLaunched', '>=', 1])),
+      () => sum(col('visitors'), 'bottlesLaunched'),
     ]);
     bigNumbers([
       { label: '참여자 수', value: visitors, unit: '명' },
@@ -101,6 +105,8 @@ async function load() {
       { label: '바다에서 건져낸 쓰레기', value: trash, unit: '개' },
       { label: '공유 · 저장', value: shares + saves, unit: `회 (공유 ${fmt(shares)} · 저장 ${fmt(saves)})` },
       { label: '공유 카드로 들어온 사람', value: viaCard, unit: '명' },
+      { label: '병 10개를 모두 띄운 사람', value: allTen, unit: '명' },
+      { label: '병을 띄운 사람 1인당 평균', value: launchers ? Math.round((launchedSum / launchers) * 10) / 10 : 0, unit: '개' },
     ]);
 
     // 퍼널 (각 단계를 한 번이라도 한 사람)

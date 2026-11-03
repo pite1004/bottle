@@ -1950,3 +1950,57 @@ button.archive-item { cursor: pointer; }
 .tl-note { margin-top: 6px; font-size: 12px; color: #5b6370; }
 
 button.archive-item[data-journey] .badge { pointer-events: none; }
+
+/* ---------- 병 띄우기 1인당 10개 ---------- */
+.quota {
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink-sub);
+  font-variant-numeric: tabular-nums;
+}
+
+.quota[hidden] { display: none; }
+.bottom-idle .quota { margin-top: -4px; }
+
+.quota-top {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-ink);
+}
+
+.quota-archive {
+  font-size: 13px;
+  color: #5b6370;
+  font-variant-numeric: tabular-nums;
+}
+
+.last-one {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff6e0;
+  color: #6b4e12;
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.last-one[hidden] { display: none; }
+
+.full-body { justify-content: center; }
+
+.full-shelf {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 6px;
+  padding: 18px 12px 12px;
+  border-radius: 20px;
+  background: linear-gradient(#e3edf5, #d3dde6);
+}
+
+.full-shelf svg { width: 30px; height: 60px; }
+
+.full-copy { text-align: center; line-height: 1.7; color: #5b6370; }
+.full-title { font-size: 19px; font-weight: 700; color: #1f2328; }

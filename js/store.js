@@ -222,17 +222,49 @@ export async function getJourney(id) {
   return bottle ? { bottle, catches: [] } : null;
 }
 
-// 띄우기: 새 병 저장 후, 이 기기의 "띄운 병" 목록에 id를 남긴다.
+// 병 띄우기는 1인당 최대 10개. 보안 규칙이 문서 ID "{uid}_{1~10}"만 허용해서 서버에서도 강제된다.
+export const MAX_BOTTLES = 10;
+
+export class BottleLimitError extends Error {
+  constructor() {
+    super('병을 모두 띄웠어요');
+    this.name = 'BottleLimitError';
+  }
+}
+
+// 띄우기: 문서 ID "{내 uid}_{번호}"로 저장. 번호 = 내 병 개수 + 1, 이미 있으면 다음 빈 번호로 한 번 더.
 export async function createBottle({ text, font, shape, color, cork, inside }) {
   await ensureReady();
-  const fields = { text, font, shape, color, cork, inside, owner: myUid(), catches: 0, stars: 0, reports: 0, hidden: false };
-  let bottle;
+  const uid = myUid();
+  const fields = { text, font, shape, color, cork, inside, owner: uid, catches: 0, stars: 0, reports: 0, hidden: false };
+  const mineNow = await listMyBottles();
+  if (mineNow.length >= MAX_BOTTLES) throw new BottleLimitError();
+  const taken = new Set(mineNow.map((b) => b.id));
+  const free = [];
+  for (let n = 1; n <= MAX_BOTTLES; n++) if (!taken.has(`${uid}_${n}`)) free.push(n);
+  // 개수 + 1번부터, 그 앞의 빈 번호는 뒤로
+  const order = [...free.filter((n) => n >= mineNow.length + 1), ...free.filter((n) => n < mineNow.length + 1)];
+  if (!order.length) throw new BottleLimitError();
+
+  let bottle = null;
   if (fb) {
-    const { collection, addDoc, serverTimestamp } = fb.fs;
-    const ref = await addDoc(collection(fb.db, 'bottles'), { ...fields, createdAt: serverTimestamp() });
-    bottle = { ...fields, id: ref.id, createdAt: Date.now() };
+    const { doc, setDoc, serverTimestamp } = fb.fs;
+    let lastErr = null;
+    for (const n of order.slice(0, 2)) {
+      const id = `${uid}_${n}`;
+      try {
+        await setDoc(doc(fb.db, 'bottles', id), { ...fields, createdAt: serverTimestamp() });
+        bottle = { ...fields, id, createdAt: Date.now() };
+        break;
+      } catch (err) {
+        // 이미 있는 ID면 규칙이 거절한다 (permission-denied) → 다음 빈 번호로
+        if (err && err.code !== 'permission-denied') throw err;
+        lastErr = err;
+      }
+    }
+    if (!bottle) throw lastErr || new BottleLimitError();
   } else {
-    bottle = { ...fields, id: 'local-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), createdAt: Date.now() };
+    bottle = { ...fields, id: `${uid}_${order[0]}`, createdAt: Date.now() };
     const list = demoBottles();
     list.push(bottle);
     save(KEY.demo, list);
