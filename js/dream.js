@@ -3,7 +3,7 @@
 import * as sound from './sound.js';
 
 // 문장은 여기서 고치면 돼요. part: past(꿈속 2026년) / rise(물이 차오름) / wake(깨어남) / after(1인칭 바다로 돌아온 뒤)
-// time: 그 문장이 머무는 시간(ms). 없으면 2.5초
+// time: 그 문장이 머무는 시간(ms). 없으면 3초
 export const LINES = [
   { part: 'past', text: '꿈을 꿨어요.' },
   { part: 'past', text: '바다가 아직 저 아래에 있던 날.' },
@@ -12,14 +12,14 @@ export const LINES = [
   { part: 'rise', text: '텀블러 하나, 꺼두지 않은 불 하나.' },
   { part: 'rise', text: '별것 아니라고 미뤄뒀던 작은 일들.' },
   { part: 'rise', text: '한 번만 더 해볼걸.' },
-  { part: 'rise', text: '그랬다면 이 바다는, 조금 덜 차올랐을까요?', time: 3500 },
+  { part: 'rise', text: '그랬다면 이 바다는, 조금 덜 차올랐을까요?', time: 4000 },
   { part: 'wake', text: '다시, 2100년.' },
-  { part: 'after', text: '그리고 당신은, 아직 그날에 살고 있어요.', time: 4000 },
+  { part: 'after', text: '그리고 당신은, 아직 그날에 살고 있어요.', time: 4500 },
 ];
 
-const LINE_TIME = 2500;
+const LINE_TIME = 3000;
 const SLEEP_TIME = 3000; // 잠들기
-const WAKE_TIME = 3600;  // 깨어남 (확대 전환 전까지)
+const WAKE_TIME = 4100;  // 깨어남 (확대 전환 전까지, "다시, 2100년."은 약 2.9초)
 const ZOOM_TIME = 1500;
 
 // 수면 높이(화면 위에서부터 %). 42 = 지금(2100년)의 해수면, 100 = 화면 아래로 다 빠짐
@@ -258,7 +258,7 @@ export function createDream({ app, onSleep = () => {}, onWake = () => {}, onComp
     say(line.text, true);
     later(() => {
       lineEl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 700, fill: 'forwards' }).onfinish = finish;
-    }, line.time || 4000);
+    }, line.time || 4500);
   }
 
   function finish() {
