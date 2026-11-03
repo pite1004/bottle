@@ -34,6 +34,7 @@ js/intro.js           처음 들어올 때 보여 주는 인트로 (상단 바 �
 js/guide.js           사용법 안내: 한 번만 뜨는 말풍선, 보관함으로 날아가는 연출
 js/seasent.js         바다가 보낸 병: 단계 조건과 고정 문구 (문구는 여기서 고치면 돼요)
 js/journey.js         내 병의 여정 화면 (#journey/병ID)
+js/dream.js           꿈꾸기 장면 (문장은 맨 위 LINES 배열에서 고치면 돼요)
 js/stats.js           익명 이용 통계 기록 (방문자·이벤트)
 js/stats-page.js      stats.html의 집계 (count/sum 쿼리)
 js/sea.js             바다 그리기, 병 움직임, 낚시
@@ -68,6 +69,9 @@ js/card.js            공유 카드 이미지
 - 오른쪽 위 **새로고침**으로 최신 숫자, **CSV로 내려받기**로 최근 14일 표를 엑셀로 열 수 있어요
 - 기록은 익명 uid·횟수·시각·기기 종류뿐이에요. 글귀 내용, IP, 이름, 연락처는 저장하지 않아요
 - 체험 모드에서는 통계를 남기지 않아요
+
+### 꿈꾸기 문장 고치기
+[js/dream.js](js/dream.js) 맨 위 `LINES` 배열의 글자만 바꾸면 돼요. `time`은 그 문장이 머무는 시간(1000 = 1초)이에요. 바다가 보낸 병 문구는 [js/seasent.js](js/seasent.js)에 있어요.
 
 ### 보안 규칙을 바꿨을 때
 [firestore.rules](firestore.rules)를 고치면 Firebase 콘솔에도 다시 붙여 넣어야 적용돼요 (아래 5-1의 6번과 같은 방법).

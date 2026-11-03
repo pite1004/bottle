@@ -21,6 +21,12 @@
           <p class="topbar-sub">2100년 · 해수면 +<span id="sea-level">1.1</span>m</p>
           <h1>잠긴 바다</h1>
         </div>
+        <button class="tool dream-btn" id="dream-btn" type="button" aria-label="꿈꾸기" hidden>
+          <span class="icon-btn" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M14.8 3.6a8.6 8.6 0 1 0 5.6 14.6A7 7 0 0 1 14.8 3.6z" fill="currentColor"/><circle cx="18.6" cy="6.2" r="1" fill="currentColor"/><circle cx="20.6" cy="10" r=".7" fill="currentColor"/></svg>
+          </span>
+          <span class="tool-label" aria-hidden="true">꿈꾸기</span>
+        </button>
         <button class="tool" id="sound-btn" type="button" aria-label="바닷소리 끄기" aria-pressed="true">
           <span class="icon-btn" aria-hidden="true">
             <svg class="icon-sound-on" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -409,6 +415,40 @@
       </div>
 
       <button class="story-skip" id="story-skip" type="button">건너뛰기</button>
+    </section>
+
+    <!-- 꿈꾸기 (#dream) -->
+    <section class="dream" id="dream" aria-label="꿈" hidden>
+      <div class="dream-stage" id="dream-stage">
+        <div class="dream-shade" id="dream-shade"></div>
+        <div class="dream-world" id="dream-world">
+          <div class="dream-sky-night"><div class="dream-moon"></div></div>
+          <div class="dream-sky-day" id="dream-sky-day"></div>
+          <svg class="dream-town" id="dream-town" aria-hidden="true" preserveAspectRatio="xMidYMax slice"></svg>
+          <div class="dream-water" id="dream-water"></div>
+          <div class="story-boat dream-boat" id="dream-boat" aria-hidden="true">
+            <svg viewBox="0 0 120 80">
+              <g class="pose-sit">
+                <circle cx="62" cy="20" r="7"/>
+                <path d="M54 30 Q62 25 70 30 L72 50 L52 50 Z"/>
+                <path d="M70 34 L82 44 L80 47 L68 39 Z"/>
+              </g>
+              <g class="pose-lie">
+                <circle cx="36" cy="43" r="6.5"/>
+                <path d="M43 40 Q64 36 88 41 L88 50 L43 50 Z"/>
+              </g>
+              <path d="M8 50 L112 50 Q106 66 92 70 L28 70 Q14 66 8 50 Z"/>
+              <path d="M14 55 L106 55" stroke="#000" stroke-opacity=".15" stroke-width="2"/>
+            </svg>
+          </div>
+          <div class="dream-tint" id="dream-tint"></div>
+        </div>
+        <div class="dream-flash" id="dream-flash"></div>
+      </div>
+      <div class="dream-text" id="dream-text" aria-live="polite">
+        <p class="dream-line" id="dream-line"></p>
+      </div>
+      <button class="story-skip dream-skip" id="dream-skip" type="button">건너뛰기</button>
     </section>
 
     <!-- 한 번만 뜨는 말풍선 (아무 데나 탭하면 닫힘) -->

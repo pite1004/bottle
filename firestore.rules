@@ -120,7 +120,7 @@ service cloud.firestore {
         let d = request.resource.data;
         return d.keys().hasOnly(['firstSeen','lastSeen','visitCount','firstSource','device','os',
             'introCompletes','castCount','lettersCaught','trashCaught','seaBottles',
-            'writeStarts','bottlesLaunched','shareCount','starsGiven'])
+            'writeStarts','bottlesLaunched','shareCount','starsGiven','dreamUnlocks','dreamCompletes'])
           && d.device in ['mobile','desktop']
           && d.os in ['ios','android','other'];
       }
@@ -131,7 +131,8 @@ service cloud.firestore {
           && d.get('lettersCaught', 0) == 0 && d.get('trashCaught', 0) == 0
           && d.get('seaBottles', 0) == 0 && d.get('writeStarts', 0) == 0
           && d.get('bottlesLaunched', 0) == 0 && d.get('shareCount', 0) == 0
-          && d.get('starsGiven', 0) == 0;
+          && d.get('starsGiven', 0) == 0 && d.get('dreamUnlocks', 0) == 0
+          && d.get('dreamCompletes', 0) == 0;
       }
 
       function grows(field) {
@@ -143,7 +144,7 @@ service cloud.firestore {
         return grows('visitCount') && grows('introCompletes') && grows('castCount')
           && grows('lettersCaught') && grows('trashCaught') && grows('seaBottles')
           && grows('writeStarts') && grows('bottlesLaunched') && grows('shareCount')
-          && grows('starsGiven');
+          && grows('starsGiven') && grows('dreamUnlocks') && grows('dreamCompletes');
       }
     }
 
@@ -160,7 +161,8 @@ service cloud.firestore {
             'letter_star','letter_report','letter_return',
             'write_start','write_blocked','decorate_open','bottle_launch','write_limit_reached','launch_cooldown',
             'share_card','save_image',
-            'archive_open','shelf_open','journey_open','record_open','replay_intro']
+            'archive_open','shelf_open','journey_open','record_open','replay_intro',
+            'dream_unlocked','dream_start','dream_complete','dream_skip']
         && request.resource.data.at == request.time
         && request.resource.data.date is string && request.resource.data.date.size() == 10
         && request.resource.data.hour is int && request.resource.data.hour >= 0 && request.resource.data.hour <= 23

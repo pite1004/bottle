@@ -4,7 +4,7 @@ import { load, save } from './store.js';
 
 export const SEA_LETTERS = {
   trash5: {
-    lines: ['오늘 당신이 건져낸 건 편지만이 아니었어요.', '바다가 아주 조금, 가벼워졌어요.'],
+    lines: ['오늘 당신이 건져낸 건 편지만이 아니었어요.', '바다가 아주 조금, 맑아 보여요.'],
     look: { shape: 'milk', color: 'green', cork: 'seaglass', inside: 'shell' },
   },
   letters5: {
@@ -14,8 +14,8 @@ export const SEA_LETTERS = {
   letters10: {
     lines: [
       '이 병들은 모두 2026년에서 떠내려왔대요.',
-      '바다가 아직 도시를 삼키기 전, 누군가 이 편지를 쓰던 그곳에서.',
-      '그곳의 내일은, 아직 정해지지 않았어요.',
+      '바다가 도시를 덮치기 전, 그때 사람들이 쓴 편지예요.',
+      '그들의 내일은, 아직 바뀔 수 있어요.',
     ],
     look: { shape: 'wine', color: 'amber', cork: 'wax', inside: 'stardust' },
   },

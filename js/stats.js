@@ -19,8 +19,11 @@ const COUNTER_FOR = {
   share_card: 'shareCount',
   save_image: 'shareCount',
   letter_star: 'starsGiven',
+  dream_unlocked: 'dreamUnlocks',
+  dream_complete: 'dreamCompletes',
 };
 
+// 처음 만들 때 0으로 넣는 누계 (꿈꾸기 누계는 생길 때 increment로만 쓴다)
 const COUNTERS = ['introCompletes', 'castCount', 'lettersCaught', 'trashCaught', 'seaBottles',
   'writeStarts', 'bottlesLaunched', 'shareCount', 'starsGiven'];
 

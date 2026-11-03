@@ -165,3 +165,101 @@ export function dip() {
   fadeTo(VOLUME * 0.25, 0.8);
   setTimeout(() => { if (enabled) fadeTo(VOLUME, 2.5); }, 2200);
 }
+
+// ---------- 꿈 장면 ----------
+// 바닷소리(master)와 따로 움직이는 꿈속 소리: 가벼운 바람 + 가끔 새소리
+let dreamGain = null;
+let dreamStop = null;
+let birdTimer = 0;
+let birdsOn = false;
+
+function buildDream() {
+  dreamGain = ctx.createGain();
+  dreamGain.gain.value = 0;
+  dreamGain.connect(ctx.destination);
+  const air = loop(ctx, noiseBuffer(ctx, 4, false));
+  const band = ctx.createBiquadFilter();
+  band.type = 'bandpass';
+  band.frequency.value = 520;
+  band.Q.value = 0.5;
+  const airGain = ctx.createGain();
+  airGain.gain.value = 0.07;
+  air.connect(band).connect(airGain).connect(dreamGain);
+  lfo(ctx, 0.07, 0.035, airGain.gain);
+  lfo(ctx, 0.04, 180, band.frequency);
+  dreamStop = () => air.stop();
+}
+
+// 짧게 두세 번 지저귀는 새소리
+function chirp() {
+  if (!dreamGain || ctx.state !== 'running') return;
+  const now = ctx.currentTime;
+  const base = 2600 + Math.random() * 1000;
+  const n = 2 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < n; i++) {
+    const t = now + i * (0.1 + Math.random() * 0.05);
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(base, t);
+    osc.frequency.exponentialRampToValueAtTime(base * 1.35, t + 0.07);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.05, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    osc.connect(g).connect(dreamGain);
+    osc.start(t);
+    osc.stop(t + 0.1);
+  }
+}
+
+function birds(on) {
+  birdsOn = on;
+  clearTimeout(birdTimer);
+  if (!on) return;
+  const next = () => {
+    if (!birdsOn) return;
+    chirp();
+    birdTimer = setTimeout(next, 1200 + Math.random() * 2600);
+  };
+  birdTimer = setTimeout(next, 600);
+}
+
+function rampDream(value, seconds) {
+  if (!dreamGain) return;
+  const now = ctx.currentTime;
+  dreamGain.gain.cancelScheduledValues(now);
+  dreamGain.gain.setValueAtTime(dreamGain.gain.value, now);
+  dreamGain.gain.linearRampToValueAtTime(value, now + seconds);
+}
+
+// phase: 'sleep'(바닷소리가 작아짐) / 'past'(바람·새소리) / 'rise'(amount 0~1: 새소리가 사라지고 바닷소리가 돌아옴) / 'wake'(평소대로)
+export function dreamScene(phase, amount = 0) {
+  if (!ctx || !enabled || ctx.state !== 'running') {
+    if (phase === 'wake') birds(false);
+    return;
+  }
+  if (phase === 'sleep') {
+    fadeTo(VOLUME * 0.3, 2.5);
+  } else if (phase === 'past') {
+    if (!dreamGain) buildDream();
+    fadeTo(0, 2);
+    rampDream(0.9, 2.5);
+    birds(true);
+  } else if (phase === 'rise') {
+    birds(false);
+    rampDream(0.9 * (1 - amount), 2.4);
+    fadeTo(VOLUME * (0.12 + 0.6 * amount), 2.4);
+  } else if (phase === 'wake') {
+    birds(false);
+    fadeTo(VOLUME, 2);
+    if (dreamGain) {
+      const g = dreamGain, stop = dreamStop;
+      dreamGain = null;
+      dreamStop = null;
+      g.gain.cancelScheduledValues(ctx.currentTime);
+      g.gain.setValueAtTime(g.gain.value, ctx.currentTime);
+      g.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.8);
+      setTimeout(() => { stop(); g.disconnect(); }, 1000);
+    }
+  }
+}

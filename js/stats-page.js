@@ -81,7 +81,7 @@ async function load() {
     // 큰 숫자
     const [
       visitors, revisit, bottles, letters, catchers, trash, shares, saves, viaCard,
-      allTen, launchers, launchedSum,
+      allTen, launchers, launchedSum, dreamers, dreamed,
     ] = await all([
       () => count(col('visitors')),
       () => count(where('visitors', ['visitCount', '>=', 2])),
@@ -95,6 +95,8 @@ async function load() {
       () => count(where('visitors', ['bottlesLaunched', '>=', 10])),
       () => count(where('visitors', ['bottlesLaunched', '>=', 1])),
       () => sum(col('visitors'), 'bottlesLaunched'),
+      () => count(where('visitors', ['dreamUnlocks', '>=', 1])),
+      () => count(where('visitors', ['dreamCompletes', '>=', 1])),
     ]);
     bigNumbers([
       { label: '참여자 수', value: visitors, unit: '명' },
@@ -107,6 +109,8 @@ async function load() {
       { label: '공유 카드로 들어온 사람', value: viaCard, unit: '명' },
       { label: '병 10개를 모두 띄운 사람', value: allTen, unit: '명' },
       { label: '병을 띄운 사람 1인당 평균', value: launchers ? Math.round((launchedSum / launchers) * 10) / 10 : 0, unit: '개' },
+      { label: '꿈꾸기 해금 인원', value: dreamers, unit: '명' },
+      { label: '꿈을 끝까지 본 인원', value: dreamed, unit: '명' },
     ]);
 
     // 퍼널 (각 단계를 한 번이라도 한 사람)

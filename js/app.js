@@ -8,6 +8,7 @@ import { checkText } from './moderation.js';
 import { renderCard, renderRecordCard, renderJourneyCard, shareOrSave } from './card.js';
 import { computeJourney, renderJourneyView } from './journey.js';
 import { createStory } from './intro.js';
+import { createDream } from './dream.js';
 import { createCoach, coachSeen, flyTo, bounce } from './guide.js';
 import { checkMilestones, pendingSeaBottles, receive, listReceived, seaBottle } from './seasent.js';
 import * as sound from './sound.js';
@@ -86,6 +87,9 @@ let lastSent = null;
 function route() {
   // '#journey/병ID'처럼 화면 이름 뒤에 값이 붙을 수 있다
   const [name, arg] = (location.hash.replace('#', '').split('?')[0] || 'sea').split('/');
+  // 꿈은 꿈꾸기 버튼으로만 시작한다 (주소로 바로 들어오면 바다로). 꿈 도중 뒤로 가기 = 건너뛰기
+  if (name === 'dream' && !dream.playing) history.replaceState(null, '', '#sea');
+  if (name !== 'dream' && dream.covering) dream.skip();
   let target = screens[name] && name !== 'soon' ? name : SOON_TITLES[name] ? 'soon' : 'sea';
   // 새로고침 등으로 보여 줄 내용이 없으면 바다로
   if ((target === 'letter' && !currentLetter) || (target === 'found' && !currentFound)
@@ -131,6 +135,7 @@ function route() {
     renderArchive(ARCHIVE_TABS.includes(tab) ? tab : 'caught');
   }
   if (target === 'sea') {
+    if (name === 'dream') return; // 꿈이 화면을 덮는 동안은 바다를 그대로 둔다
     if (seaReady) sea.start(); // 첫 병 목록을 받기 전엔 시작하지 않는다 (빈 바다 문구가 잠깐 뜨지 않게)
     enterSea();
   } else {
@@ -139,6 +144,27 @@ function route() {
     sea.stop();
   }
   window.scrollTo(0, 0);
+}
+
+// 상단 안내 3초 (바다가 보낸 병 등장, 꿈꾸기 해금)
+// 이미 떠 있으면 그게 사라진 뒤 차례로 보여 준다
+const noticeQueue = [];
+
+function showNotice(text) {
+  const notice = $('sea-notice');
+  if (!notice.hidden) {
+    noticeQueue.push(text);
+    return;
+  }
+  notice.textContent = text;
+  notice.hidden = false;
+  notice.animate([{ opacity: 0, transform: 'translate(-50%, -8px)' }, { opacity: 1, transform: 'translate(-50%, 0)' }],
+    { duration: 400, easing: 'ease-out' });
+  clearTimeout(seaNoticeTimer);
+  seaNoticeTimer = setTimeout(() => {
+    notice.hidden = true;
+    if (noticeQueue.length) setTimeout(() => showNotice(noticeQueue.shift()), 300);
+  }, 3000);
 }
 
 // ---------- 바다 · 낚시 ----------
@@ -189,12 +215,7 @@ const sea = createSea($('scene'), {
   onSpecialAppear() {
     // 작은 종소리 + 상단 안내 3초
     sound.chime();
-    const notice = $('sea-notice');
-    notice.hidden = false;
-    notice.animate([{ opacity: 0, transform: 'translate(-50%, -8px)' }, { opacity: 1, transform: 'translate(-50%, 0)' }],
-      { duration: 400, easing: 'ease-out' });
-    clearTimeout(seaNoticeTimer);
-    seaNoticeTimer = setTimeout(() => { notice.hidden = true; }, 3000);
+    showNotice('무언가 반짝이는 병이 떠내려와요');
   },
   onEscape() {
     showFishPanel(false); // 당기다 놓쳐서 다시 흘러감
@@ -574,6 +595,7 @@ async function launch(chosenLook) {
   myBottleCount = (myBottleCount ?? 0) + 1;
   renderQuota();
   stats.track('bottle_launch', chosenLook === DEFAULT_LOOK ? 'plain' : 'custom');
+  checkDream();
   lastSent = bottle;
   draft.text = '';
   Object.assign(draft, DEFAULT_LOOK);
@@ -911,6 +933,7 @@ $('journey-save').addEventListener('click', () => deliverCard('save'));
 
 // ---------- 나의 바다 기록 ----------
 function recordStats(reached) {
+  const dreamDate = store.load('bottle.dream.date', null);
   const caught = store.listCaught();
   const n = caught.length;
   const days = caught.map((b) => Math.floor((b.caughtAt - b.createdAt) / DAY)).filter((d) => d >= 0);
@@ -925,6 +948,7 @@ function recordStats(reached) {
     { label: '가장 많이 만난 유리', value: topColor ? optionLabel('color', topColor[0]) : '—' },
     { label: '밤에 건진 편지', value: n ? `${Math.round((night / n) * 100)}%` : '—' },
     { label: '내 병이 닿은 사람', value: reached == null ? '…' : `${reached}명` },
+    ...(dreamDate ? [{ label: '꿈을 꾼 날', value: formatDate(dreamDate) }] : []),
   ];
 }
 
@@ -1075,7 +1099,7 @@ function queueCoach(key) {
 
 // 인트로가 끝난 뒤, 바다 화면에서, 낚시 중이 아닐 때만. 동시에 하나만.
 function canCoach() {
-  return !screens.sea.hidden && !story.playing && !sea.busy && !coach.visible;
+  return !screens.sea.hidden && !story.playing && !dream.playing && !sea.busy && !coach.visible;
 }
 
 function tryCoach() {
@@ -1110,6 +1134,7 @@ function enterSea() {
 
 // 10초 동안 아무 조작이 없으면 가장 가까운 병 위에 "병을 탭해보세요" (병을 건진 적 있으면 안 뜸)
 setInterval(() => {
+  if (dreamBtn.hidden) revealDream(); // 해금됐지만 낚시가 끝나길 기다리는 중이면 지금 보여 준다
   if (!canCoach()) return;
   if (coachQueue.length) return tryCoach();
   if (Date.now() - lastActivity < 10000) return;
@@ -1130,7 +1155,69 @@ function checkSeaGifts() {
     reached: store.load('bottle.catchTotal', 0) || 0,
   });
   sea.setSpecial(pendingSeaBottles());
+  checkDream();
 }
+
+// ---------- 꿈꾸기 ----------
+// 해금: 건진 쓰레기 10개 + 건진 편지 10통(바다가 보낸 병 제외) + 띄운 병 1개 이상
+const dreamBtn = $('dream-btn');
+
+function checkDream() {
+  if (store.load('bottle.dream.unlocked', false)) return;
+  const launched = Math.max(myBottleCount ?? 0, store.mineIds().size);
+  if (store.listCaught().length >= 10 && store.trashTotal() >= 10 && launched >= 1) {
+    store.save('bottle.dream.unlocked', true);
+    stats.track('dream_unlocked');
+  }
+  revealDream();
+}
+
+// 처음 해금되면 바다 화면에서 버튼이 페이드인 + 상단 안내. 낚시 중이거나 다른 화면이면 바다로 돌아올 때까지 미룬다
+function revealDream() {
+  if (!store.load('bottle.dream.unlocked', false)) return;
+  const fresh = !store.load('bottle.dream.pressed', false);
+  if (store.load('bottle.dream.announced', false)) {
+    dreamBtn.hidden = false;
+    dreamBtn.classList.toggle('fresh', fresh);
+    return;
+  }
+  if (screens.sea.hidden || story.playing || dream.playing || sea.busy) return;
+  store.save('bottle.dream.announced', true);
+  dreamBtn.hidden = false;
+  dreamBtn.classList.toggle('fresh', fresh);
+  dreamBtn.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1400, easing: 'ease-out' });
+  showNotice('배 위에서 스르르 잠이 와요…');
+}
+
+const dream = createDream({
+  app,
+  onSleep() { sea.stop(); },
+  onWake() {
+    // 주소는 바다로 되돌리되 화면 전환(route)은 다시 하지 않는다
+    if (location.hash === '#dream') history.replaceState(null, '', '#sea');
+    if (seaReady && !screens.sea.hidden) sea.start();
+  },
+  onComplete() {
+    stats.track('dream_complete');
+    if (!store.load('bottle.dream.date', null)) store.save('bottle.dream.date', Date.now());
+  },
+  onSkip(n) { stats.track('dream_skip', n); },
+  onDone() {
+    lastActivity = Date.now();
+    enterSea();
+  },
+});
+
+dreamBtn.addEventListener('click', () => {
+  if (dream.playing || story.playing) return;
+  if (sea.busy) releaseFish();
+  coach.close();
+  store.save('bottle.dream.pressed', true);
+  dreamBtn.classList.remove('fresh');
+  stats.track('dream_start');
+  dream.play();
+  location.hash = 'dream';
+});
 
 // ---------- 사용법 안내: 재방문 소식 ----------
 // 내 병들의 catches 합계가 지난번보다 늘었으면 알려 준다
@@ -1166,7 +1253,7 @@ async function checkNews() {
   renderArchiveBadge();
   // 인트로가 도는 중이면 끝난 뒤에
   const show = () => {
-    if (story.playing) return setTimeout(show, 500);
+    if (story.playing || dream.playing) return setTimeout(show, 500);
     newsBanner.textContent = `띄운 병이 ${total - prev}명에게 더 닿았어요`;
     newsBanner.hidden = false;
     newsBanner.animate([{ opacity: 0, transform: 'translate(-50%, -8px)' }, { opacity: 1, transform: 'translate(-50%, 0)' }],
@@ -1185,7 +1272,7 @@ newsBanner.addEventListener('click', () => {
 // ---------- 시작 ----------
 // 바다·인트로를 아래로 당겨 새로고침되는 것 막기
 document.addEventListener('touchmove', (e) => {
-  if (e.target.closest('.scene, .bottom-fish, .story')) e.preventDefault();
+  if (e.target.closest('.scene, .bottom-fish, .story, .dream')) e.preventDefault();
 }, { passive: false });
 
 stats.start(); // 방문 기록 (체험 모드면 콘솔에만)
@@ -1201,6 +1288,6 @@ route();
 if (!store.load('bottle.seenStory', false) && !screens.sea.hidden) playStory();
 await loadSea();
 seaReady = true;
-checkSeaGifts(); // 지난번에 조건을 채웠지만 아직 못 건진 병도 다시 떠내려온다
+checkSeaGifts(); // 지난번에 조건을 채웠지만 아직 못 건진 병도 다시 떠내려온다 (꿈꾸기 해금도 여기서 확인)
 if (!screens.sea.hidden) sea.start();
 checkNews();
