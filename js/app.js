@@ -250,7 +250,8 @@ const sea = createSea($('scene'), {
     }
   },
   onEmptyChange(empty) {
-    $('sea-empty').hidden = !empty;
+    seaEmpty = empty;
+    renderSeaEmpty();
   },
 });
 
@@ -610,12 +611,23 @@ $('launch-plain-btn').addEventListener('click', () => launch(DEFAULT_LOOK));
 
 // ---------- 병 띄우기 1인당 10개 ----------
 let myBottleCount = null; // 내가 띄운 병 수 (모르면 null → 막지 않음)
+let seaEmpty = false;
 
 function remaining() {
   return myBottleCount == null ? null : Math.max(0, store.MAX_BOTTLES - myBottleCount);
 }
 
+function launchedCount() {
+  return Math.max(myBottleCount ?? 0, store.mineIds().size);
+}
+
+// 내 병은 내 바다에 안 나오므로, 병을 띄운 적 있는 사람에겐 "첫 병을 띄워보세요"를 보여 주지 않는다
+function renderSeaEmpty() {
+  $('sea-empty').hidden = !seaEmpty || launchedCount() > 0;
+}
+
 function renderQuota() {
+  renderSeaEmpty();
   const left = remaining();
   const known = left != null;
   const seaQuota = $('quota-sea');
@@ -1151,8 +1163,7 @@ const dreamBtn = $('dream-btn');
 
 function checkDream() {
   if (store.load('bottle.dream.unlocked', false)) return;
-  const launched = Math.max(myBottleCount ?? 0, store.mineIds().size);
-  if (store.listCaught().length >= 10 && store.trashTotal() >= 10 && launched >= 1) {
+  if (store.listCaught().length >= 10 && store.trashTotal() >= 10 && launchedCount() >= 1) {
     store.save('bottle.dream.unlocked', true);
     stats.track('dream_unlocked');
   }

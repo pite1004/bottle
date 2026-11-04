@@ -32,6 +32,7 @@ export function createStory({ app, onStart = () => {}, onDone = () => {} }) {
   const lineEl = $('story-line');
   const startBtn = $('story-start');
   const skipBtn = $('story-skip');
+  const privacy = $('story-privacy');
   const bottlesBox = $('story-bottles');
   const topbar = app.querySelector('.topbar');
   const rod = app.querySelector('.rod');
@@ -110,9 +111,10 @@ export function createStory({ app, onStart = () => {}, onDone = () => {} }) {
     clearTimeout(timer);
     if (!startBtn.hidden) return;
     startBtn.hidden = false;
-    $('story-privacy').hidden = false;
+    privacy.hidden = false;
     startBtn.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }],
       { duration: 500, easing: 'ease-out' });
+    privacy.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, easing: 'ease-out' });
     startBtn.focus({ preventScroll: true });
   }
 
@@ -133,7 +135,7 @@ export function createStory({ app, onStart = () => {}, onDone = () => {} }) {
     done = false;
     index = -1;
     startBtn.hidden = true;
-    $('story-privacy').hidden = true;
+    privacy.hidden = true;
     lineEl.textContent = '';
     for (const el of [story, world, lineEl, skipBtn, startBtn, topbar, rod]) {
       el.getAnimations().forEach((a) => a.cancel());
@@ -169,7 +171,7 @@ export function createStory({ app, onStart = () => {}, onDone = () => {} }) {
         ],
         { duration: dur, easing: 'cubic-bezier(.5,0,.7,.4)', fill: 'forwards' },
       );
-      for (const el of [lineEl.parentElement, skipBtn]) {
+      for (const el of [lineEl.parentElement, skipBtn, privacy]) {
         el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 350, fill: 'forwards' });
       }
       rod.animate(
@@ -185,7 +187,7 @@ export function createStory({ app, onStart = () => {}, onDone = () => {} }) {
 
     story.animate([{ opacity: 1 }, { opacity: 0 }], { duration: dur, easing: 'ease-in', fill: 'forwards' }).onfinish = () => {
       story.hidden = true;
-      for (const el of [story, world, lineEl.parentElement, skipBtn]) {
+      for (const el of [story, world, lineEl.parentElement, skipBtn, privacy]) {
         el.getAnimations().forEach((a) => a.cancel());
       }
       onDone();

@@ -1796,11 +1796,21 @@ button.archive-item { cursor: pointer; }
 
 /* 익명 통계 안내 (인트로 마지막·보관함 맨 아래) */
 .story-privacy {
-  max-width: 300px;
-  font-size: 11px;
+  position: absolute;
+  left: 50%;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  width: min(320px, calc(100% - 32px));
+  box-sizing: border-box;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .72);
+  color: #1f2328;
+  font-size: 12px;
   line-height: 1.5;
-  color: #3b4250;
-  pointer-events: auto;
+  text-align: center;
+  word-break: keep-all;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .story-privacy[hidden] { display: none; }
