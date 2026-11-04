@@ -9,6 +9,7 @@ export const COACH = {
   sent: '내 병이 몇 명에게 닿았는지 여기서 볼 수 있어요',
   trash: '모은 쓰레기는 꾸미기 재료가 돼요',
   idle: '병을 탭해보세요',
+  dream: '꿈꾸기가 열렸어요. 달을 눌러보세요',
 };
 
 export function coachSeen(key) {
@@ -29,14 +30,15 @@ export function createCoach(app) {
 
   // getTarget: () => DOMRect 비슷한 것({left, top, width, height}, 화면 좌표) 또는 null
   // place: 'below'(대상 아래, 꼬리 위) | 'above'(대상 위, 꼬리 아래)
-  function show(key, getTarget, place = 'below') {
-    if (current || coachSeen(key)) return false;
+  // repeat: 한 번만이 아니라 다시 띄울 수 있는 말풍선
+  function show(key, getTarget, place = 'below', repeat = false) {
+    if (current || (!repeat && coachSeen(key))) return false;
     const first = getTarget();
     if (!first) return false;
-    save(`bottle.coach.${key}`, true);
+    if (!repeat) save(`bottle.coach.${key}`, true);
     current = key;
     text.textContent = COACH[key];
-    box.className = `coach ${place}`;
+    box.className = `coach ${place} coach-${key}`;
     box.hidden = false;
 
     const position = () => {

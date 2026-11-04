@@ -178,6 +178,14 @@ export function createSea(scene, {
     checkEmpty();
   }
 
+  // 앱을 연 뒤 새로 띄워진 병: 다음 차례로 떠내려오게 한다
+  function addBottle(b) {
+    pool.push(b);
+    queue.push(b);
+    spawnTimer = Math.min(spawnTimer, 1.5);
+    if (running) checkEmpty();
+  }
+
   // 바다가 보낸 병 목록. 새로 생기면 곧바로 상류에서 떠내려오게 한다.
   function setSpecial(list) {
     const before = new Set(special.map((s) => s.id));
@@ -570,6 +578,7 @@ export function createSea(scene, {
     start,
     stop,
     setPool,
+    addBottle,
     setSpecial,
     hold,
     release,

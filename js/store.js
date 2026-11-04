@@ -153,6 +153,12 @@ export function mineIds() {
 }
 
 // ---------- 바다 ----------
+let newestSeen = 0; // 처음 받은 목록에서 가장 최근 병의 시각. 이 뒤의 병만 실시간으로 듣는다
+
+function canFloat(b) {
+  return !b.hidden && b.owner !== myUid() && !mineIds().has(b.id) && !caughtIds().has(b.id);
+}
+
 // 바다에 띄울 병: 최신순 60개 중 숨김·내 병·이미 건진 병을 뺀다.
 export async function listSeaBottles() {
   await ensureReady();
@@ -164,10 +170,23 @@ export async function listSeaBottles() {
   } else {
     latest = demoBottles().slice().sort((a, b) => b.createdAt - a.createdAt).slice(0, 60);
   }
-  const uid = myUid();
-  const caught = caughtIds();
-  const mine = mineIds();
-  return latest.filter((b) => !b.hidden && b.owner !== uid && !mine.has(b.id) && !caught.has(b.id));
+  newestSeen = latest.length ? latest[0].createdAt : 0;
+  return latest.filter(canFloat);
+}
+
+// 앱을 연 뒤에 새로 띄워진 병을 실시간으로 받는다. 새 병만 듣기 때문에 읽기는 새 병 수만큼만 든다.
+// 체험 모드는 이 기기뿐이라 듣지 않는다.
+export function watchNewBottles({ onAdd, onRemove }) {
+  if (!fb) return;
+  const { collection, query, where, orderBy, onSnapshot, Timestamp } = fb.fs;
+  const fresh = query(collection(fb.db, 'bottles'), where('createdAt', '>', Timestamp.fromMillis(newestSeen)), orderBy('createdAt'));
+  onSnapshot(fresh, (snap) => {
+    for (const change of snap.docChanges()) {
+      const b = fromDoc(change.doc);
+      if (change.type === 'removed' || b.hidden) onRemove(b.id);
+      else if (change.type === 'added' && canFloat(b)) onAdd(b);
+    }
+  }, (err) => console.error(err));
 }
 
 // 이 기기에서 건진 편지 (최근 것부터)

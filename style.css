@@ -803,6 +803,14 @@ h1, h2, p { margin: 0; }
 }
 
 .coach.below::before { top: -5px; }
+
+/* 꿈꾸기가 열렸을 때: 눈에 띄게 금빛으로 */
+.coach-dream {
+  background: #3a2e14;
+  color: #ffe9b0;
+  font-weight: 700;
+  box-shadow: 0 0 0 1px rgba(255, 214, 140, .55), 0 0 22px rgba(255, 210, 130, .6);
+}
 .coach.above::before { bottom: -5px; }
 
 .news-banner {

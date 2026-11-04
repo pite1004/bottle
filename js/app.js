@@ -304,8 +304,21 @@ let seaPool = [];
 
 async function loadSea() {
   try {
-    seaPool = params.has('empty') ? [] : await store.listSeaBottles();
+    if (params.has('empty')) return sea.setPool([]);
+    seaPool = await store.listSeaBottles();
     sea.setPool(seaPool);
+    store.watchNewBottles({
+      onAdd(b) {
+        if (seaPool.some((x) => x.id === b.id)) return;
+        seaPool.push(b);
+        sea.addBottle(b);
+      },
+      onRemove(id) {
+        if (!seaPool.some((x) => x.id === id)) return;
+        seaPool = seaPool.filter((x) => x.id !== id);
+        sea.setPool(seaPool);
+      },
+    });
   } catch (err) {
     console.error(err);
     toast('바다에 연결하지 못했어요. 잠시 뒤 다시 열어 주세요');
@@ -1102,7 +1115,7 @@ function canCoach() {
 }
 
 function tryCoach() {
-  if (!canCoach()) return;
+  if (!canCoach() || dreamHint()) return;
   while (coachQueue.length) {
     const key = coachQueue.shift();
     if (coachSeen(key)) continue;
@@ -1134,7 +1147,7 @@ function enterSea() {
 // 10초 동안 아무 조작이 없으면 가장 가까운 병 위에 "병을 탭해보세요" (병을 건진 적 있으면 안 뜸)
 setInterval(() => {
   if (dreamBtn.hidden) revealDream(); // 해금됐지만 낚시가 끝나길 기다리는 중이면 지금 보여 준다
-  if (!canCoach()) return;
+  if (!canCoach() || dreamHint()) return;
   if (coachQueue.length) return tryCoach();
   if (Date.now() - lastActivity < 10000) return;
   if (coachSeen('idle') || store.listCaught().length > 0) return;
@@ -1185,6 +1198,18 @@ function revealDream() {
   dreamBtn.classList.toggle('fresh', fresh);
   dreamBtn.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1400, easing: 'ease-out' });
   showNotice('배 위에서 스르르 잠이 와요…');
+}
+
+// 꿈꾸기를 아직 안 눌렀으면 놓치지 않게 버튼을 가리키는 말풍선 (닫아도 1분 뒤나 바다로 돌아올 때 다시)
+const DREAM_HINT_GAP = 60 * 1000;
+let lastDreamHint = 0;
+
+function dreamHint() {
+  if (dreamBtn.hidden || store.load('bottle.dream.pressed', false)) return false;
+  if (!$('sea-notice').hidden || noticeQueue.length) return false; // 상단 안내가 끝난 뒤에
+  if (Date.now() - lastDreamHint < DREAM_HINT_GAP) return false;
+  lastDreamHint = Date.now();
+  return coach.show('dream', () => dreamBtn.getBoundingClientRect(), 'below', true);
 }
 
 const dream = createDream({
