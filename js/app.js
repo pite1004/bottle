@@ -105,9 +105,8 @@ function route() {
   $('demo-badge').hidden = store.mode !== 'demo' || target !== 'sea';
   if (target === 'soon') $('soon-title').textContent = SOON_TITLES[name];
   if (target === 'write') {
-    const blocked = writeBlocked();
-    if (blocked) {
-      history.replaceState(null, '', blocked === 'full' ? '#full' : '#sea');
+    if (writeBlocked()) {
+      history.replaceState(null, '', '#full');
       route();
       return;
     }
@@ -568,9 +567,8 @@ let launching = false;
 async function launch(chosenLook) {
   if (launching) return;
   // 05에서 오래 머물렀을 수 있으니 띄우기 직전에도 확인
-  const blocked = writeBlocked();
-  if (blocked) {
-    if (blocked === 'full') location.hash = 'full';
+  if (writeBlocked()) {
+    location.hash = 'full';
     return;
   }
   launching = true;
@@ -591,7 +589,6 @@ async function launch(chosenLook) {
   } finally {
     launching = false;
   }
-  store.save('bottle.lastLaunch', Date.now());
   myBottleCount = (myBottleCount ?? 0) + 1;
   renderQuota();
   stats.track('bottle_launch', chosenLook === DEFAULT_LOOK ? 'plain' : 'custom');
@@ -611,8 +608,7 @@ async function launch(chosenLook) {
 $('launch-btn').addEventListener('click', () => launch(look()));
 $('launch-plain-btn').addEventListener('click', () => launch(DEFAULT_LOOK));
 
-// ---------- 병 띄우기 1인당 10개 · 연속 띄우기 1분 간격 ----------
-const LAUNCH_GAP = 60 * 1000;
+// ---------- 병 띄우기 1인당 10개 ----------
 let myBottleCount = null; // 내가 띄운 병 수 (모르면 null → 막지 않음)
 
 function remaining() {
@@ -635,29 +631,20 @@ function renderQuota() {
   btn.setAttribute('href', left === 0 ? '#full' : '#write');
 }
 
-// 05로 가도 되는지: 'full'(10개 다 씀) / 'cooldown'(1분 안) / null(괜찮음). 막히면 안내·통계까지
+// 10개를 다 띄웠으면 05로 가지 않는다
 function writeBlocked() {
-  if (remaining() === 0) {
-    stats.track('write_limit_reached');
-    return 'full';
-  }
-  const since = Date.now() - store.load('bottle.lastLaunch', 0);
-  if (since < LAUNCH_GAP) {
-    stats.track('launch_cooldown');
-    toast('잠깐 바다를 바라보다가 다시 띄워볼까요?');
-    return 'cooldown';
-  }
-  return null;
+  if (remaining() !== 0) return false;
+  stats.track('write_limit_reached');
+  return true;
 }
 
 // 05로 가는 모든 버튼(바다·편지·보관함의 "나도 병 띄우기" 등)
 document.addEventListener('click', (e) => {
   const a = e.target.closest('a[href="#write"]');
   if (!a) return;
-  const blocked = writeBlocked();
-  if (!blocked) return;
+  if (!writeBlocked()) return;
   e.preventDefault();
-  if (blocked === 'full') location.hash = 'full';
+  location.hash = 'full';
 });
 
 // 병을 모두 띄웠을 때: 내가 꾸민 병들을 작게 늘어놓는다

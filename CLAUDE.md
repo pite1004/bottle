@@ -42,7 +42,7 @@ Claude Code는 작업을 시작할 때마다 이 파일을 먼저 읽는다. 아
 10. 체험 모드: Firebase 설정이 비어 있으면 localStorage로 동작
 11. 통계 기록 + 통계 페이지 `stats.html` (12장). 대회 발표용으로 "몇 명이 참여했고 편지가 얼마나 오갔는지" 숫자를 최대한 남긴다
 12. 내 병의 여정 화면·카드 (`#journey/{병ID}`)
-13. 병 띄우기는 1인당 최대 10개 (보안 규칙에서 강제, 5장) + 같은 기기에서 연속 띄우기는 1분 간격
+13. 병 띄우기는 1인당 최대 10개 (보안 규칙에서 강제, 5장)
 14. 꿈꾸기: 조건을 채우면 열리는 약 35초짜리 꿈 장면 (`#dream`, 3장 "꿈꾸기")
 15. 링크 미리보기: OG 태그, 공유 이미지, 파비콘·홈 화면 아이콘 (7장 "링크 미리보기")
 
@@ -139,9 +139,7 @@ Google·이메일 로그인, 알림 메일, AI 검열, 서버 함수, 관리자 
 ### 05 글귀 쓰기 (`#write`, 1/2)
 
 * 상단에 `남은 병 N / 10`
-* 들어오기 전 확인 (`나도 병 띄우기` 등 05로 가는 모든 버튼):
-  * 10개를 모두 띄웠으면 05 대신 "병을 모두 띄웠을 때" 화면 (통계 `write_limit_reached`)
-  * 같은 기기에서 직전에 띄운 지 1분 이내면 들어가지 않고 `잠깐 바다를 바라보다가 다시 띄워볼까요?` 안내 (통계 `launch_cooldown`)
+* 들어오기 전 확인 (`나도 병 띄우기` 등 05로 가는 모든 버튼): 10개를 모두 띄웠으면 05 대신 "병을 모두 띄웠을 때" 화면 (통계 `write_limit_reached`)
 
 * 라벨 `누구에게든, 아무에게도 아닌 한 줄`, textarea 최대 100자, 글자 수 표시
 * placeholder `전하지 못한 말, 오늘의 마음, 2100년의 누군가에게…`
@@ -159,7 +157,7 @@ Google·이메일 로그인, 알림 메일, AI 검열, 서버 함수, 관리자 
   * 넣을 것: 없음 · 말린 꽃 · 조개껍데기 · 별모래(잠김)
   * 잠긴 항목은 흐리게 + `수집품으로 해금`, 누를 수 없음
 * 버튼: 보조 `그냥 띄우기`(기본값으로) / 기본 `바다로 띄우기`
-* 띄우기 직전에도 10개 제한·1분 간격을 다시 확인 (05에서 오래 머물렀을 때)
+* 띄우기 직전에도 10개 제한을 다시 확인 (05에서 오래 머물렀을 때)
 
 ### 07 띄우기 완료
 
@@ -462,7 +460,7 @@ typeDate: 'catch_letter_2026-11-04', typeHour: 'catch_letter_21'   — 인덱스
 * 방문: `session_start`(새 방문일 때), `intro_start`, `intro_complete`, `intro_skip`
 * 낚시: `cast`, `hooked`, `pull_release`(놓아주기), `catch_letter`, `catch_trash`(meta=종류), `catch_sea_bottle`(meta=단계)
 * 편지: `letter_star`, `letter_report`, `letter_return`
-* 쓰기: `write_start`, `write_blocked`(meta=이유 분류), `decorate_open`, `bottle_launch`(meta=`plain`|`custom`), `write_limit_reached`(10개 다 쓴 뒤 띄우기 시도), `launch_cooldown`(1분 간격에 걸림)
+* 쓰기: `write_start`, `write_blocked`(meta=이유 분류), `decorate_open`, `bottle_launch`(meta=`plain`|`custom`), `write_limit_reached`(10개 다 쓴 뒤 띄우기 시도)
 * 공유: `share_card`, `save_image` (meta=`letter`|`journey`|`record`)
 * 탐색: `archive_open`, `shelf_open`, `journey_open`, `record_open`, `replay_intro`
 * 꿈꾸기: `dream_unlocked`, `dream_start`, `dream_complete`, `dream_skip`(meta=문장 번호)
