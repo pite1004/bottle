@@ -44,6 +44,7 @@ Claude Code는 작업을 시작할 때마다 이 파일을 먼저 읽는다. 아
 12. 내 병의 여정 화면·카드 (`#journey/{병ID}`)
 13. 병 띄우기는 1인당 최대 10개 (보안 규칙에서 강제, 5장) + 같은 기기에서 연속 띄우기는 1분 간격
 14. 꿈꾸기: 조건을 채우면 열리는 약 35초짜리 꿈 장면 (`#dream`, 3장 "꿈꾸기")
+15. 링크 미리보기: OG 태그, 공유 이미지, 파비콘·홈 화면 아이콘 (7장 "링크 미리보기")
 
 ### 빼는 것 (나중에)
 
@@ -352,6 +353,19 @@ bottles/{id}/reports/{uid}: at(serverTimestamp)
   * 웹페이지는 갤러리에 직접 저장할 수 없다. 안드로이드 `저장`은 다운로드(Download 폴더 → 갤러리의 Download 앨범)와 안내 문구, 아이폰은 공유 시트의 `이미지 저장`. 파일 이름에 시각을 붙여 덮어쓰지 않게
 * 체험 모드(`store.js`): `firebase-config.js`가 비어 있으면 localStorage 저장소로 동작하고, 화면 구석에 `체험 모드` 표시. 체험 모드에서만 예시 병 몇 개를 넣고 내용 끝에 `(예시)`를 붙인다. 실제 배포 Firestore에는 가짜 사용자 글을 넣지 않는다. 첫 병들은 운영자와 지인이 직접 띄운다.
 
+### 링크 미리보기
+
+카톡, 인스타 DM, 에브리타임에 링크를 보냈을 때 미리보기가 뜨게 한다.
+
+* 해시 라우팅(`#sea` 등)이라 서버가 받는 주소는 언제나 `/`이고 미리보기 봇은 `#` 뒤를 보내지 않는다. `?ref=card&b=…` 공유 링크도 같은 index.html이다. 그래서 OG 태그는 `index.html` 하나에만 둔다
+* 제목 `유리병 편지 · 2100년의 바다`, 설명 `2100년, 물에 잠긴 바다 위로 누군가의 병이 떠내려왔어요. 건져서 읽고, 당신의 이야기도 띄워보세요.`
+* `og:url`·`og:image`·`twitter:image`는 https 절대 주소. 도메인을 정하기 전까지 `[도메인]`으로 표시해 둔다 (이때는 미리보기 이미지가 뜨지 않음)
+* `og.png`: 1200×630, 300KB 이하. 인트로 장면(노을 바다, 잠긴 도시 꼭대기, 작은 배, 배 옆 유리병) + `2100년, 당신에게 병 하나가 떠내려왔어요` + 서비스 이름. 글자는 가운데 가로 1000px 안에만
+* 이미지와 문구에 "2026년에서 떠내려왔다"는 반전 내용은 절대 넣지 않는다
+* 아이콘: `favicon.svg`(유리병), `apple-touch-icon.png`(180×180)
+* `theme-color`의 처음 값은 노을 톤 `#a7a2bd`. 앱이 열리면 시간대에 맞춰 `app.js`가 바꾼다
+* 이미지 다시 만들기: `python tools/make_images.py` (`tools/og.html`·`tools/icon.html`을 Edge·Chrome 헤드리스로 찍어 Pillow로 저장. 이미지 도구일 뿐 사이트 빌드 단계는 아님)
+
 ## 8. 디자인 기준
 
 * 색: 글자 `#1f2328`, 보조 글자 `#5b6370`, 테두리 `#c5cbd2`, 하늘(낮) `#eef2f6`, 바다(낮) `#d3dde6`, 주색 `#2f6f9f`, 주색 연한 배경 `#e3edf5`, 주색 진한 글자 `#1d4a6b`
@@ -368,6 +382,8 @@ bottles/{id}/reports/{uid}: at(serverTimestamp)
 index.html
 style.css
 stats.html              # 통계 페이지 (링크 없음, 주소로만)
+og.png, favicon.svg, apple-touch-icon.png   # 링크 미리보기·아이콘
+tools/                  # og.png·아이콘을 다시 만드는 스크립트 (make_images.py, og.html, icon.html)
 firebase-config.js      # 사용자가 Firebase 웹 앱 설정값을 붙여 넣는 곳 (비어 있으면 체험 모드)
 firestore.rules
 js/app.js               # 화면 전환, 상태

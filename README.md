@@ -25,6 +25,10 @@ carbon footprint viral contents. bottle message fishing
 
 ```
 index.html            화면 전체 뼈대 (모든 화면이 섹션으로 들어 있음)
+og.png                링크 미리보기 이미지 (tools/로 다시 만듦)
+favicon.svg           브라우저 탭 아이콘
+apple-touch-icon.png  아이폰 홈 화면 아이콘
+tools/                og.png·아이콘을 다시 만드는 스크립트
 stats.html            발표용 통계 페이지 (사이트 어디에도 링크 없음, 주소로만)
 style.css             색·글꼴·배치
 firebase-config.js    Firebase 웹 앱 설정값 (비우면 체험 모드)
@@ -72,6 +76,19 @@ js/card.js            공유 카드 이미지
 
 ### 꿈꾸기 문장 고치기
 [js/dream.js](js/dream.js) 맨 위 `LINES` 배열의 글자만 바꾸면 돼요. `time`은 그 문장이 머무는 시간(1000 = 1초)이에요. 바다가 보낸 병 문구는 [js/seasent.js](js/seasent.js)에 있어요.
+
+### 링크 미리보기
+**도메인을 정했을 때:** [index.html](index.html) 맨 위 `<head>`에서 `[도메인]` 3곳을 실제 주소로 바꿔요 (예: `bottle-hazel.vercel.app`). 바꾸기 전에는 미리보기에 이미지가 뜨지 않아요.
+
+**이미지를 고쳤을 때:** 문구는 [tools/og.html](tools/og.html)에서 고치고, 아래 명령을 실행해요 (Python, Pillow, Edge 또는 Chrome 필요).
+
+```bash
+python tools/make_images.py
+```
+
+**배포 후 확인:**
+1. [카카오 공유 디버거](https://developers.kakao.com/tool/debugger/sharing)에 사이트 주소를 넣고 미리보기를 봐요. 예전 모습이 나오면 **캐시 초기화**를 눌러요 (카카오 개발자 계정 로그인 필요)
+2. [페이스북 공유 디버거](https://developers.facebook.com/tools/debug/)에 주소를 넣고 **디버그**를 눌러 og 태그가 인식되는지 봐요. 예전 모습이면 **다시 스크랩**
 
 ### 보안 규칙을 바꿨을 때
 [firestore.rules](firestore.rules)를 고치면 Firebase 콘솔에도 다시 붙여 넣어야 적용돼요 (아래 5-1의 6번과 같은 방법).

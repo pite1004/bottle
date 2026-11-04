@@ -202,7 +202,7 @@ export function createStory({ app, onStart = () => {}, onDone = () => {} }) {
 }
 
 // 수평선 위로 꼭대기만 보이는 잠긴 도시 (바다 화면과 같은 모양)
-function drawCity(svg) {
+export function drawCity(svg) {
   let s = 2100;
   const rnd = () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
   let x = 0, parts = '';

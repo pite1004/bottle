@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- og.png(링크 미리보기 이미지) 원본. tools/make_images.py가 1200×630으로 찍는다.
+     배경은 index.html의 인트로 장면과 style.css를 그대로 가져와 쓴다. 문구는 아래 .og-title·.og-name에서 고치면 돼요 -->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>og</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../style.css">
+<style>
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  .og { position: relative; width: 1200px; height: 630px; overflow: hidden; }
+  .story-world { --story-horizon: 58%; }
+  .story-sun { left: 70%; bottom: -36px; width: 104px; height: 104px; }
+  .story-glow { left: calc(70% - 12px); width: 130px; }
+  .story-city { height: 12%; top: calc(var(--story-horizon) - 12%); }
+  .story-boat, .story-bottle > div { animation: none; }
+  .story-boat { left: 66%; top: 80%; width: 216px; height: 144px; margin: -116px 0 0 -108px; }
+  .story-bottle { left: 49%; top: 87%; width: 54px; height: 108px; margin: -108px 0 0 -27px; }
+  /* 카톡 미리보기에서 가장자리가 잘릴 수 있어서 글자는 가운데 1000px 안에만 */
+  .og-text { position: absolute; left: 100px; top: 62px; width: 1000px; color: #1f2328; }
+  .og-title { font-size: 66px; font-weight: 700; line-height: 1.28; letter-spacing: -.02em; }
+  .og-name { margin-top: 18px; font-size: 28px; font-weight: 500; color: #333a47; }
+</style>
+</head>
+<body>
+<div class="og" id="og"></div>
+<script type="module">
+  import { bottleSVG } from '../js/bottle.js';
+  import { drawCity } from '../js/intro.js';
+
+  const page = new DOMParser().parseFromString(await (await fetch('../index.html')).text(), 'text/html');
+  const world = page.getElementById('story-world');
+  const og = document.getElementById('og');
+  og.appendChild(document.adoptNode(world));
+  const city = og.querySelector('.story-city');
+  drawCity(city);
+  city.setAttribute('preserveAspectRatio', 'none'); // 넓은 화면에서 꼭대기가 잘려 평평해지지 않게
+  og.querySelector('.story-bottles').innerHTML = `<div class="story-bottle"><div>${bottleSVG({ shape: 'wine', color: 'amber', cork: 'cork', inside: 'none' })}</div></div>`;
+  og.insertAdjacentHTML('beforeend', `<div class="og-text">
+    <p class="og-title">2100년, 당신에게<br>병 하나가 떠내려왔어요</p>
+    <p class="og-name">유리병 편지</p>
+  </div>`);
+  await document.fonts.ready;
+</script>
+</body>
+</html>
