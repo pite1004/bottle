@@ -359,7 +359,7 @@ bottles/{id}/reports/{uid}: at(serverTimestamp)
 
 * 해시 라우팅(`#sea` 등)이라 서버가 받는 주소는 언제나 `/`이고 미리보기 봇은 `#` 뒤를 보내지 않는다. `?ref=card&b=…` 공유 링크도 같은 index.html이다. 그래서 OG 태그는 `index.html` 하나에만 둔다
 * 제목 `유리병 편지 · 2100년의 바다`, 설명 `2100년, 물에 잠긴 바다 위로 누군가의 병이 떠내려왔어요. 건져서 읽고, 당신의 이야기도 띄워보세요.`
-* `og:url`·`og:image`·`twitter:image`는 https 절대 주소. 도메인을 정하기 전까지 `[도메인]`으로 표시해 둔다 (이때는 미리보기 이미지가 뜨지 않음)
+* `og:url`·`og:image`·`twitter:image`는 https 절대 주소. 도메인은 `www.bottleletter2100.com` (`bottleletter2100.com`은 여기로 넘어감, 예전 주소 `bottle-hazel.vercel.app`도 그대로 열림)
 * `og.png`: 1200×630, 300KB 이하. 인트로 장면(노을 바다, 잠긴 도시 꼭대기, 작은 배, 배 옆 유리병) + `2100년, 당신에게 병 하나가 떠내려왔어요` + 서비스 이름. 글자는 가운데 가로 1000px 안에만
 * 이미지와 문구에 "2026년에서 떠내려왔다"는 반전 내용은 절대 넣지 않는다
 * 아이콘: `favicon.svg`(유리병), `apple-touch-icon.png`(180×180)

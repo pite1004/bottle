@@ -4,7 +4,7 @@ carbon footprint viral contents. bottle message fishing
 
 지구온난화로 도시가 물에 잠긴 2100년. 1인칭으로 바다를 바라보며 떠다니는 유리병을 낚싯대로 건져 낯선 사람의 한 줄을 읽고, 나도 병을 꾸며 바다에 띄우는 웹 서비스예요.
 
-- 사이트: https://bottle-hazel.vercel.app
+- 사이트: https://www.bottleletter2100.com
 - 작업 지시서(기획·명세): [CLAUDE.md](CLAUDE.md)
 
 이 문서는 개발이 처음인 사람도 따라 할 수 있게 썼어요.
@@ -69,7 +69,7 @@ js/card.js            공유 카드 이미지
 [Vercel 대시보드](https://vercel.com/pite1004/bottle) → **Deployments**에서 맨 위가 **Ready**면 성공이에요. **Error**면 눌러서 로그를 확인해요.
 
 ### 발표용 통계 보기
-- 주소: https://bottle-hazel.vercel.app/stats.html (사이트 안에는 링크가 없어요. 주소를 직접 쳐야 해요)
+- 주소: https://www.bottleletter2100.com/stats.html (사이트 안에는 링크가 없어요. 주소를 직접 쳐야 해요)
 - 오른쪽 위 **새로고침**으로 최신 숫자, **CSV로 내려받기**로 최근 14일 표를 엑셀로 열 수 있어요
 - 기록은 익명 uid·횟수·시각·기기 종류뿐이에요. 글귀 내용, IP, 이름, 연락처는 저장하지 않아요
 - 체험 모드에서는 통계를 남기지 않아요
@@ -78,7 +78,7 @@ js/card.js            공유 카드 이미지
 [js/dream.js](js/dream.js) 맨 위 `LINES` 배열의 글자만 바꾸면 돼요. `time`은 그 문장이 머무는 시간(1000 = 1초)이에요. 바다가 보낸 병 문구는 [js/seasent.js](js/seasent.js)에 있어요.
 
 ### 링크 미리보기
-**도메인을 정했을 때:** [index.html](index.html) 맨 위 `<head>`에서 `[도메인]` 3곳을 실제 주소로 바꿔요 (예: `bottle-hazel.vercel.app`). 바꾸기 전에는 미리보기에 이미지가 뜨지 않아요.
+**도메인을 바꿀 때:** [index.html](index.html) 맨 위 `<head>`의 `og:url`, `og:image`, `twitter:image` 3곳을 새 주소로 바꿔요.
 
 **이미지를 고쳤을 때:** 문구는 [tools/og.html](tools/og.html)에서 고치고, 아래 명령을 실행해요 (Python, Pillow, Edge 또는 Chrome 필요).
 
@@ -102,7 +102,7 @@ python tools/make_images.py
 | `?time=day` / `?time=dusk` / `?time=night` | 낮 / 노을 / 밤 하늘 (원래는 기기 시각 기준) |
 | `?empty=1` | 병 없는 빈 바다 (쓰레기만 떠다님) |
 
-예: `https://bottle-hazel.vercel.app/?time=night`
+예: `https://www.bottleletter2100.com/?time=night`
 
 ## 5. 처음부터 다시 설정할 때
 
