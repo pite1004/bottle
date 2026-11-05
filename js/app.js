@@ -306,7 +306,7 @@ $('release-btn').addEventListener('click', () => {
   releaseFish();
 });
 
-// 바다 목록은 앱을 열 때 한 번만 받는다 (병 60개 = 읽기 60회라 무료 한도를 아끼려고)
+// 바다 목록은 앱을 열 때 한 번만 받는다 (병 60개 = 읽기 약 60회라 무료 한도를 아끼려고)
 let seaPool = [];
 
 async function loadSea() {

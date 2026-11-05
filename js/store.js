@@ -159,19 +159,47 @@ function canFloat(b) {
   return !b.hidden && b.owner !== myUid() && !mineIds().has(b.id) && !caughtIds().has(b.id);
 }
 
-// 바다에 띄울 병: 최신순 60개 중 숨김·내 병·이미 건진 병을 뺀다.
+const SEA_SIZE = 60;   // 앱을 열 때 받는 병 수 (읽기 비용)
+const SEA_NEWEST = 20; // 그중 최신 병. 나머지는 아직 아무도 안 건진 병을 무작위로
+
+// 문서 ID는 익명 uid로 시작해서 무작위 위치부터 읽으면 무작위로 뽑힌다. 끝까지 읽어도 모자라면 처음으로 돌아간다.
+async function randomBottles(filters, count) {
+  const { collection, query, orderBy, documentId, startAt, endBefore, limit, getDocs } = fb.fs;
+  const letters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+  const pick = () => letters[Math.floor(Math.random() * letters.length)];
+  const key = pick() + pick();
+  const ordered = [collection(fb.db, 'bottles'), ...filters, orderBy(documentId())];
+  const first = await getDocs(query(...ordered, startAt(key), limit(count)));
+  if (first.size >= count) return first.docs;
+  const rest = await getDocs(query(...ordered, endBefore(key), limit(count - first.size)));
+  return [...first.docs, ...rest.docs];
+}
+
+// 사람이 많아져도 병이 골고루 닿게: 최신 병 + 아직 아무도 안 건진 병, 모자라면 아무 병으로 채운다
+async function pickSeaBottles() {
+  const { collection, query, where, orderBy, limit, getDocs } = fb.fs;
+  const [newest, unread] = await Promise.all([
+    getDocs(query(collection(fb.db, 'bottles'), orderBy('createdAt', 'desc'), limit(SEA_NEWEST))),
+    randomBottles([where('catches', '==', 0)], SEA_SIZE - SEA_NEWEST),
+  ]);
+  const picked = new Map([...newest.docs, ...unread].map((d) => [d.id, fromDoc(d)]));
+  if (picked.size < SEA_SIZE) {
+    for (const d of await randomBottles([], SEA_SIZE - picked.size)) picked.set(d.id, fromDoc(d));
+  }
+  return { list: [...picked.values()], newest: newest.empty ? 0 : fromDoc(newest.docs[0]).createdAt };
+}
+
+// 바다에 띄울 병에서 숨김·내 병·이미 건진 병을 뺀다.
 export async function listSeaBottles() {
   await ensureReady();
-  let latest;
+  let list;
   if (fb) {
-    const { collection, query, orderBy, limit, getDocs } = fb.fs;
-    const snap = await getDocs(query(collection(fb.db, 'bottles'), orderBy('createdAt', 'desc'), limit(60)));
-    latest = snap.docs.map(fromDoc);
+    ({ list, newest: newestSeen } = await pickSeaBottles());
   } else {
-    latest = demoBottles().slice().sort((a, b) => b.createdAt - a.createdAt).slice(0, 60);
+    list = demoBottles().slice().sort((a, b) => b.createdAt - a.createdAt).slice(0, SEA_SIZE);
+    newestSeen = list.length ? list[0].createdAt : 0;
   }
-  newestSeen = latest.length ? latest[0].createdAt : 0;
-  return latest.filter(canFloat);
+  return list.filter(canFloat);
 }
 
 // 앱을 연 뒤에 새로 띄워진 병을 실시간으로 받는다. 새 병만 듣기 때문에 읽기는 새 병 수만큼만 든다.
