@@ -234,10 +234,8 @@ function rampDream(value, seconds) {
 
 // phase: 'sleep'(바닷소리가 작아짐) / 'past'(바람·새소리) / 'rise'(amount 0~1: 새소리가 사라지고 바닷소리가 돌아옴) / 'wake'(평소대로)
 export function dreamScene(phase, amount = 0) {
-  if (!ctx || !enabled || ctx.state !== 'running') {
-    if (phase === 'wake') birds(false);
-    return;
-  }
+  // 다른 앱에 갔다 와서 멈춰 있어도 깨어날 때는 소리 크기를 되돌려 둔다 (안 그러면 바닷소리가 작은 채로 남는다)
+  if (!ctx || !enabled || (ctx.state !== 'running' && phase !== 'wake')) return;
   if (phase === 'sleep') {
     fadeTo(VOLUME * 0.3, 2.5);
   } else if (phase === 'past') {

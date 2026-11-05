@@ -51,12 +51,12 @@ function makeStars() {
 
 // ---------- 알림 문구 ----------
 let toastTimer = 0;
-function toast(msg) {
+function toast(msg, ms = 2400) {
   const el = $('toast');
   el.textContent = msg;
   el.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.hidden = true; }, 2400);
+  toastTimer = setTimeout(() => { el.hidden = true; }, ms);
 }
 
 // ---------- 화면 전환 ----------
@@ -134,11 +134,13 @@ function route() {
     renderArchive(ARCHIVE_TABS.includes(tab) ? tab : 'caught');
   }
   if (target === 'sea') {
-    if (name === 'dream') return; // 꿈이 화면을 덮는 동안은 바다를 그대로 둔다
+    if (name === 'dream' && dream.playing) return; // 꿈이 화면을 덮는 동안은 바다를 그대로 둔다
     if (seaReady) sea.start(); // 첫 병 목록을 받기 전엔 시작하지 않는다 (빈 바다 문구가 잠깐 뜨지 않게)
     enterSea();
   } else {
     coach.close();
+    dream.dismiss();
+    $('sea-notice').hidden = true;
     if (sea.busy) releaseFish();
     sea.stop();
   }
@@ -162,8 +164,13 @@ function showNotice(text) {
   clearTimeout(seaNoticeTimer);
   seaNoticeTimer = setTimeout(() => {
     notice.hidden = true;
-    if (noticeQueue.length) setTimeout(() => showNotice(noticeQueue.shift()), 300);
+    setTimeout(nextNotice, 300);
   }, 3000);
+}
+
+// 다른 화면에 있으면 바다로 돌아올 때까지 기다린다
+function nextNotice() {
+  if (noticeQueue.length && !screens.sea.hidden) showNotice(noticeQueue.shift());
 }
 
 // ---------- 바다 · 낚시 ----------
@@ -342,6 +349,7 @@ function showLetter(b, from = 'sea') {
   back.href = from === 'archive' ? '#archive' : '#sea';
   back.setAttribute('aria-label', from === 'archive' ? '보관함으로 돌아가기' : '바다로 돌아가기');
   const fromSea = !!b.special;
+  $('letter-return').textContent = from === 'archive' ? '바다로 가기' : '바다로 돌려보내기';
   $('letter-title').textContent = fromSea ? '바다가 보낸 병' : '건진 병';
   $('letter-card').classList.toggle('from-sea', fromSea);
   $('letter-bottle').classList.toggle('from-sea', fromSea);
@@ -409,6 +417,8 @@ let cardPromise = null;
 let cardMeta = { kind: 'letter', b: null }; // kind: 'letter' | 'journey' | 'record'
 
 const CARD_REF = { letter: 'card', journey: 'journey', record: 'record' };
+// 카톡·인스타 등 앱 안 브라우저는 이미지 다운로드를 막는 경우가 많다
+const IN_APP_BROWSER = /KAKAOTALK|Instagram|FBAN|FBAV|FB_IAB|NAVER|Line\/|everytime/i.test(navigator.userAgent);
 
 function prepareCard(b) {
   cardMeta = { kind: 'letter', b: b.special ? null : b.id };
@@ -430,7 +440,9 @@ async function deliverCard(how) {
     const result = await shareOrSave(blob, how, shareUrl());
     if (result === 'shared') stats.track('share_card', cardMeta.kind);
     if (result === 'saved' || result === 'saved-sheet') stats.track('save_image', cardMeta.kind);
-    if (result === 'saved') {
+    if (result === 'saved' && IN_APP_BROWSER) {
+      toast('앱 안 브라우저에선 저장이 안 될 수 있어요. 메뉴에서 Chrome이나 Safari로 열어 주세요', 5000);
+    } else if (result === 'saved') {
       toast(/Android/i.test(navigator.userAgent)
         ? '저장했어요. 갤러리의 Download 앨범에서 볼 수 있어요'
         : '카드 이미지를 저장했어요');
@@ -1119,7 +1131,7 @@ function tryCoach() {
   while (coachQueue.length) {
     const key = coachQueue.shift();
     if (coachSeen(key)) continue;
-    coach.show(key, () => archiveIcon.getBoundingClientRect(), 'below');
+    coach.show(key, () => archiveBtn.getBoundingClientRect(), 'below');
     return;
   }
 }
@@ -1127,6 +1139,7 @@ function tryCoach() {
 // 바다로 돌아왔을 때: 날아가는 연출 → 배지 +1 → 말풍선
 function enterSea() {
   lastActivity = Date.now();
+  if ($('sea-notice').hidden) nextNotice();
   if (pendingFly) {
     const fly = pendingFly;
     pendingFly = null;
@@ -1175,8 +1188,8 @@ function checkSeaGifts() {
 const dreamBtn = $('dream-btn');
 
 function checkDream() {
-  if (store.load('bottle.dream.unlocked', false)) return;
-  if (store.listCaught().length >= 10 && store.trashTotal() >= 10 && launchedCount() >= 1) {
+  if (!store.load('bottle.dream.unlocked', false)
+    && store.listCaught().length >= 10 && store.trashTotal() >= 10 && launchedCount() >= 1) {
     store.save('bottle.dream.unlocked', true);
     stats.track('dream_unlocked');
   }
@@ -1227,7 +1240,7 @@ const dream = createDream({
   onSkip(n) { stats.track('dream_skip', n); },
   onDone() {
     lastActivity = Date.now();
-    enterSea();
+    if (!screens.sea.hidden) enterSea();
   },
 });
 

@@ -53,8 +53,9 @@ js/card.js            공유 카드 이미지
 
 ### 금칙어 추가하기
 1. GitHub에서 [js/moderation.js](js/moderation.js)를 열고 오른쪽 위 연필 아이콘(Edit)을 눌러요.
-2. 맨 위 `BANNED_WORDS` 목록에 `'단어',` 형태로 추가해요. 띄어쓰기·숫자를 끼운 변형은 자동으로 같이 잡혀요.
+2. 맨 위 `BANNED_WORDS` 목록에 `'단어',` 형태로 추가해요. 기호·숫자를 끼우거나 한 글자씩 띄어 쓴 변형은 자동으로 같이 잡혀요.
 3. 위기 문구는 그 아래 `CRISIS_WORDS`에 같은 방식으로 추가해요.
+   평범한 말이 잘못 막히면 `ALLOWED_WORDS`에 그 말을 추가해요 (예: `'시발점'`).
 4. 오른쪽 위 **Commit changes…** → **Commit changes**를 누르면 1분 뒤 사이트에 반영돼요.
 
 ### 문제 있는 병 지우기

@@ -70,7 +70,7 @@ export function computeJourney(bottle, catches, now = Date.now()) {
 // 작은 숫자들 (화면·카드 공용)
 export function journeyFacts(j) {
   const facts = [`${j.days}일째 떠다니는 중`];
-  if (j.reached > 0) facts.unshift(`${j.stars}명이 마음에 담았어요`);
+  if (j.stars > 0) facts.unshift(`${j.stars}명이 마음에 담았어요`);
   if (j.firstDelay != null) facts.push(`띄운 지 ${spanWords(j.firstDelay)} 만에 첫 사람이 건졌어요`);
   if (j.latestAgo != null) {
     facts.push(`가장 최근엔 ${spanWords(j.latestAgo)} 전, 누군가 ${TOD_WORD[j.latestTod] || ''} 읽었어요`);

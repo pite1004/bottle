@@ -2208,6 +2208,13 @@ button.archive-item[data-journey] .badge { pointer-events: none; }
 .dream.centered .dream-line { min-height: 0; }
 /* 바다로 돌아온 뒤 마지막 한 줄은 수평선 바로 아래 (빈 바다 문구와 겹치지 않게) */
 .dream.after .dream-text { top: 36%; }
+/* 낮 바다 위에서도 읽히게 */
+.dream.after .dream-line {
+  display: inline-block;
+  padding: 10px 18px;
+  border-radius: 16px;
+  background: rgba(20, 26, 34, .62);
+}
 .dream-skip { z-index: 2; }
 
 /* 꿈을 꾸는 동안 1인칭 바다의 상단 바·낚싯대는 숨겨 둔다 (깨어날 때 나타남) */

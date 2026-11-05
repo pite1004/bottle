@@ -275,6 +275,11 @@ export function createDream({ app, onSleep = () => {}, onWake = () => {}, onComp
     root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 500, fill: 'forwards' }).onfinish = finish;
   }
 
+  // 마지막 한 줄이 떠 있는 동안 다른 화면으로 가면 바로 치운다
+  function dismiss() {
+    if (state === 'after') finish();
+  }
+
   // 화면 탭: 다음 문장으로
   function next() {
     if (state === 'sleep') startPast();
@@ -292,6 +297,7 @@ export function createDream({ app, onSleep = () => {}, onWake = () => {}, onComp
   return {
     play,
     skip,
+    dismiss,
     get playing() { return state !== 'idle'; },
     // 꿈 장면이 화면을 덮고 있는 동안 (마지막 한 줄은 바다 위에 떠 있을 뿐이라 제외)
     get covering() { return state !== 'idle' && state !== 'after'; },

@@ -1,5 +1,6 @@
 // 띄우기 전 글귀 검사 (클라이언트). 걸리면 저장하지 않는다.
-// 아래 목록은 직접 추가·수정해도 된다. 띄어쓰기·기호·숫자를 끼워 넣은 변형도 함께 잡는다.
+// 아래 목록은 직접 추가·수정해도 된다. 기호·숫자를 끼워 넣은 변형과 한 글자씩 띄어 쓴 변형도 함께 잡는다.
+// 두 글자 단어는 낱말 경계를 넘어 잡지 않는다 ("다시 발견", "이 병 신기해", "어머니 미안해"는 통과).
 
 // 욕설·비하어. 자음만 쓴 변형도 여기에 넣는다.
 export const BANNED_WORDS = [
@@ -8,10 +9,17 @@ export const BANNED_WORDS = [
   '개새끼', '개새기', '개색기', '개색끼', 'ㄱㅅㄲ', '새끼', 'ㅅㄲ',
   '좆', 'ㅈ같', '좃같', '존나', '졸라', 'ㅈㄴ',
   '지랄', 'ㅈㄹ', '썅', '쌍놈', '쌍년', '미친놈', '미친년', 'ㅁㅊ', '또라이', '닥쳐',
-  '애미', '애비', '느금', '니미', '니애미', '엠창', '앰창',
+  '애미', '애비', '느금', '니미럴', '니애미', '엠창', '앰창',
   '한남충', '김치녀', '된장녀', '틀딱', '급식충', '맘충', '짱깨', '쪽바리', '흑형',
   '장애새끼', '애자', '정신병자',
   'fuck', 'shit', 'bitch', 'asshole', 'motherfucker',
+];
+
+// 금칙어가 들어 있지만 평범한 낱말. 검사 전에 지운다. 잘못 막히는 말이 있으면 여기에 추가한다.
+export const ALLOWED_WORDS = [
+  '시발점', '시발역', '시발견', '시발걸음', '병신년', '병신기', '병신경',
+  '닥쳐오', '닥쳐올', '닥쳐온', '새끼손가락', '새끼발가락', '새끼 고양이', '새끼 강아지', '새끼 오리', '새끼 새',
+  '졸라맨', '졸라매', '연애자', '애자일',
 ];
 
 // 위기 문구. 걸리면 공개하지 않고 도움 안내를 보여 준다.
@@ -34,9 +42,38 @@ const MESSAGES = {
   banned: '바다에 띄우기 어려운 표현이 있어요. 조금만 고쳐 볼까요?',
 };
 
-// 글자 사이에 끼운 띄어쓰기·기호·숫자를 지운 형태 (예: "시 1 발" → "시발")
+// 낱말마다 끼운 기호·숫자를 지우고, 한 글자씩 띄어 쓴 것만 붙인다 (예: "시 1 발" → "시발", "다시 발견"은 그대로)
 function squash(text) {
-  return text.toLowerCase().replace(/[\s\d._\-~!?*@#$%^&+=|/\\,'"`·ㆍ…()[\]{}<>]/g, '');
+  const words = text.toLowerCase().split(/\s+/)
+    .map((w) => w.replace(/[\d._\-~!?*@#$%^&+=|/\\,'"`·ㆍ…()[\]{}<>]/g, ''))
+    .filter(Boolean);
+  const out = [];
+  let run = '';
+  for (const w of words) {
+    if (w.length === 1) {
+      run += w;
+    } else {
+      if (run) out.push(run);
+      run = '';
+      out.push(w);
+    }
+  }
+  if (run) out.push(run);
+  return out.join(' ');
+}
+
+// 세 글자 이상 한글 표현은 띄어쓰기를 바꿔도 잡고, 짧은 말과 영어는 낱말 안에서만 찾는다
+function hasWord(flat, words) {
+  const joined = flat.replace(/ /g, '');
+  return words.some((w) => {
+    const word = squash(w);
+    const long = word.replace(/ /g, '');
+    return long.length >= 3 && !/[a-z]/.test(long) ? joined.includes(long) : flat.includes(word);
+  });
+}
+
+function withoutAllowed(text) {
+  return ALLOWED_WORDS.reduce((t, w) => t.replace(new RegExp(w.replace(/ /g, '\\s*'), 'g'), ' '), text);
 }
 
 function hasContact(text) {
@@ -51,7 +88,8 @@ function hasContact(text) {
   if (/[\w.+-]+\s*(?:@|골뱅이)\s*[\w-]+\s*\.\s*[a-z]{2,}/i.test(t)) return 'contact';
   // 링크
   if (/https?:\/\/|www\.|open\.kakao|bit\.ly|닷컴|닷넷/i.test(t)) return 'link';
-  if (/[a-z0-9-]+\s*\.\s*(?:com|net|org|kr|co|io|me|ly|gg|xyz|app|link|site|shop|kakao)\b/i.test(t)) return 'link';
+  if (/[a-z0-9-]+\.(?:com|net|org|kr|co|io|me|ly|gg|xyz|app|link|site|shop|kakao)\b/i.test(t)) return 'link';
+  if (/[a-z0-9-]+\s*\.\s*(?:com|net|org|kr)\b/i.test(t)) return 'link'; // "naver . com"처럼 띄운 것
   // @아이디
   if (/@[a-z0-9._]{2,}/i.test(t)) return 'sns';
   // SNS 이름 + 아이디처럼 보이는 문자열
@@ -62,18 +100,18 @@ function hasContact(text) {
 
 // 결과의 code는 통계용 차단 이유 분류: contact / link / profanity / repeat / crisis (글귀 내용은 기록하지 않는다)
 export function checkText(raw) {
-  const text = (raw || '').trim();
+  const text = (raw || '').trim().replace(/\n{3,}/g, '\n\n'); // 빈 줄을 잔뜩 넣어도 두 줄까지만
   if (!text) return { ok: false, reason: MESSAGES.empty };
   if (text.length > 100) return { ok: false, reason: MESSAGES.long };
 
-  const flat = squash(text);
+  const flat = squash(withoutAllowed(text));
   // 위기 문구는 다른 검사보다 먼저 본다
-  if (CRISIS_WORDS.some((w) => flat.includes(squash(w)))) return { ok: false, crisis: true, code: 'crisis' };
+  if (hasWord(flat, CRISIS_WORDS)) return { ok: false, crisis: true, code: 'crisis' };
 
   const contact = hasContact(text);
   if (contact) return { ok: false, reason: MESSAGES[contact], code: contact === 'link' ? 'link' : 'contact' };
 
-  if (BANNED_WORDS.some((w) => flat.includes(squash(w)))) return { ok: false, reason: MESSAGES.banned, code: 'profanity' };
+  if (hasWord(flat, BANNED_WORDS)) return { ok: false, reason: MESSAGES.banned, code: 'profanity' };
 
   if (/(.)\1{9,}/u.test(text.replace(/\s/g, ''))) return { ok: false, reason: MESSAGES.repeat, code: 'repeat' };
 

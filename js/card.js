@@ -53,6 +53,27 @@ function wrap(ctx, text, maxWidth) {
   return lines;
 }
 
+// 정해진 높이 안에 들어가는 가장 큰 글자 크기와 줄. 그래도 넘치면 끝을 …로 줄인다.
+// pad: 글귀 칸의 위아래 여백 합
+function fitText(ctx, text, f, maxWidth, maxHeight, pad) {
+  let fit = null;
+  for (let k = 1; k >= 0.5; k -= 0.05) {
+    const size = Math.round(f.size * k);
+    ctx.font = `${size}px "${f.family}"`;
+    const lines = wrap(ctx, text, maxWidth);
+    const lineH = size * f.line;
+    fit = { size, lines, lineH, boxH: lines.length * lineH + pad };
+    if (fit.boxH <= maxHeight) return fit;
+  }
+  const keep = Math.max(1, Math.floor((maxHeight - pad) / fit.lineH));
+  if (fit.lines.length > keep) {
+    fit.lines = fit.lines.slice(0, keep);
+    fit.lines[keep - 1] = `${fit.lines[keep - 1].replace(/.$/u, '')}…`;
+  }
+  fit.boxH = fit.lines.length * fit.lineH + pad;
+  return fit;
+}
+
 function drawCity(ctx, color) {
   ctx.fillStyle = color;
   let s = 2100;
@@ -109,17 +130,20 @@ export async function renderCard(bottle, time = 'day') {
   ctx.fillStyle = 'rgba(255,255,255,.35)';
   ctx.fillRect(0, HORIZON, W, 3);
 
+  // 글귀가 길면 글자와 병을 줄여서 아래 서비스 이름과 겹치지 않게 한다
+  const top = HORIZON + 50;
+  const bottomLimit = H - 170;
+  const { size, lines, lineH, boxH } = fitText(ctx, bottle.text, f, 800, bottomLimit - top - 320 - 40, 120);
+  const bottleH = Math.min(600, bottomLimit - top - boxH - 40);
+
   // 병
   const svg = (bottle.special ? seaBottleSVG() : bottleSVG(bottle)).replace('<svg ', '<svg width="300" height="600" ');
   const img = await loadImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
-  ctx.drawImage(img, (W - 300) / 2, HORIZON + 60, 300, 600);
+  ctx.drawImage(img, (W - bottleH / 2) / 2, top, bottleH / 2, bottleH);
 
   // 글귀 (종이 카드 위에)
-  ctx.font = fontCss;
-  const lines = wrap(ctx, bottle.text, 800);
-  const lineH = f.size * f.line;
-  const boxH = lines.length * lineH + 120;
-  const boxY = HORIZON + 720;
+  ctx.font = `${size}px "${f.family}"`;
+  const boxY = top + bottleH + 40;
   ctx.fillStyle = 'rgba(251,247,236,.94)';
   roundRect(ctx, 80, boxY, W - 160, boxH, 40);
   ctx.fill();
@@ -202,11 +226,7 @@ export async function renderRecordCard(stats, quote, time = 'day') {
   // 마음에 남은 편지
   if (quote) {
     const y0 = top + Math.ceil(stats.length / 2) * (boxH + 30) + 10;
-    const size = qf.size * 0.8;
-    ctx.font = `${size}px "${qf.family}"`;
-    const lines = wrap(ctx, quote.text, 780).slice(0, 4);
-    const lineH = size * qf.line;
-    const h = lines.length * lineH + 130;
+    const { size, lines, lineH, boxH: h } = fitText(ctx, quote.text, { ...qf, size: qf.size * 0.8 }, 780, H - 170 - y0, 130);
     ctx.fillStyle = 'rgba(251,247,236,.94)';
     roundRect(ctx, 80, y0, W - 160, h, 32);
     ctx.fill();
@@ -285,10 +305,9 @@ export async function renderJourneyCard(j, hideText, time = 'day', svg) {
   let y = 900;
   // 글귀 (가리기 상태면 넣지 않음)
   if (!hideText) {
-    ctx.font = `${textSize}px "${f.family}"`;
-    const lines = wrap(ctx, j.text, 780).slice(0, 3);
-    const lineH = textSize * f.line;
-    const h = lines.length * lineH + 80;
+    const timeline = 170 + (j.recorded ? 190 : 0) + 50;
+    const { size, lines, lineH, boxH: h } = fitText(ctx, j.text, { ...f, size: textSize }, 780, H - 170 - y - timeline, 80);
+    ctx.font = `${size}px "${f.family}"`;
     ctx.fillStyle = 'rgba(251,247,236,.94)';
     roundRect(ctx, 100, y, W - 200, h, 32);
     ctx.fill();
