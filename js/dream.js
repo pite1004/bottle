@@ -1,6 +1,7 @@
 // 꿈꾸기 (#dream, 약 30초): 배 위에서 잠들어 2026년의 도시를 꿈꾸고, 물이 차오르며 다시 2100년으로 깨어난다.
 // 인트로와 같은 3인칭 장면(배·사람·바다)을 쓴다.
 import * as sound from './sound.js';
+import { zoomThroughVeil } from './intro.js';
 
 // 문장은 여기서 고치면 돼요. part: past(꿈속 2026년) / rise(물이 차오름) / wake(깨어남) / after(1인칭 바다로 돌아온 뒤)
 // time: 그 문장이 머무는 시간(ms). 없으면 3초
@@ -20,7 +21,6 @@ export const LINES = [
 const LINE_TIME = 3000;
 const SLEEP_TIME = 3000; // 잠들기
 const WAKE_TIME = 4100;  // 깨어남 (확대 전환 전까지, "다시, 2100년."은 약 2.9초)
-const ZOOM_TIME = 1500;
 
 // 수면 높이(화면 위에서부터 %). 42 = 지금(2100년)의 해수면, 100 = 화면 아래로 다 빠짐
 const SEA_NOW = 42;
@@ -44,6 +44,7 @@ export function createDream({ app, onSleep = () => {}, onWake = () => {}, onComp
   const skyDay = $('dream-sky-day');
   const tint = $('dream-tint');
   const flash = $('dream-flash');
+  const veil = $('dream-veil');
   const boat = $('dream-boat');
   const textBox = $('dream-text');
   const lineEl = $('dream-line');
@@ -96,9 +97,11 @@ export function createDream({ app, onSleep = () => {}, onWake = () => {}, onComp
   }
 
   function reset() {
-    for (const el of [root, stage, shade, world, lineEl, textBox, skipBtn, flash, scene, topbar, rod]) {
+    for (const el of [root, stage, shade, world, veil, lineEl, textBox, skipBtn, flash, scene, topbar, rod]) {
       el.getAnimations().forEach((a) => a.cancel());
     }
+    world.classList.remove('zooming');
+    for (const el of [world, shade]) el.style.visibility = '';
     root.classList.remove('after', 'centered');
     boat.classList.remove('lying');
     lineEl.textContent = '';
@@ -128,22 +131,18 @@ export function createDream({ app, onSleep = () => {}, onWake = () => {}, onComp
       world.style.transformOrigin = `${b.left + b.width * 0.52 - rect.left}px ${b.top + b.height * 0.3 - rect.top}px`;
       shade.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1400, easing: 'ease-in', fill: 'backwards' });
       scene.animate(
-        [{ transform: 'scale(1)', filter: 'brightness(1)' }, { transform: 'scale(.86)', filter: 'brightness(.45)' }],
+        [{ transform: 'scale(1)' }, { transform: 'scale(.86)' }],
         { duration: 1400, easing: 'ease-in', fill: 'forwards' },
       );
       world.animate(
         [
-          { transform: 'scale(3.4)', filter: 'blur(10px)', opacity: 0 },
-          { transform: 'scale(1)', filter: 'blur(0)', opacity: 1 },
+          { transform: 'scale(3.4)', opacity: 0 },
+          { transform: 'scale(1)', opacity: 1 },
         ],
         { duration: 1700, delay: 700, easing: 'cubic-bezier(.3,.6,.5,1)', fill: 'backwards' },
       );
       later(() => boat.classList.add('lying'), 1900);
     }
-    later(() => {
-      scene.getAnimations().forEach((a) => a.cancel());
-      onSleep();
-    }, 2500);
     later(startPast, SLEEP_TIME);
   }
 
@@ -151,6 +150,9 @@ export function createDream({ app, onSleep = () => {}, onWake = () => {}, onComp
   function startPast() {
     clearTimers();
     state = 'past';
+    // 바다는 이제 꿈 장면에 가려진다 (잠들기 중에 탭해서 넘어와도 줄어든 채로 남지 않게 여기서)
+    scene.getAnimations().forEach((a) => a.cancel());
+    onSleep();
     sound.dreamScene('past');
     const apply = (s) => {
       setWater(100, s * 1.15);
@@ -159,8 +161,9 @@ export function createDream({ app, onSleep = () => {}, onWake = () => {}, onComp
     if (rm()) {
       crossfade(() => apply(0));
     } else {
-      world.animate(
-        [{ filter: 'blur(0)' }, { filter: 'blur(6px)', offset: 0.35 }, { filter: 'blur(0)' }],
+      // 화면이 부드럽게 번진다 (폰에서 깜빡이는 blur 필터 대신 빛을 잠깐 올린다)
+      flash.animate(
+        [{ opacity: 0 }, { opacity: 0.4, offset: 0.35 }, { opacity: 0 }],
         { duration: 2400, easing: 'ease-in-out' },
       );
       apply(2.4);
@@ -217,34 +220,23 @@ export function createDream({ app, onSleep = () => {}, onWake = () => {}, onComp
   function zoomOut() {
     clearTimers();
     state = 'zoom';
-    const zoom = !rm();
-    const dur = zoom ? ZOOM_TIME : 500;
     onWake();
     app.classList.remove('dream-on');
     hush(350);
     skipBtn.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 350, fill: 'forwards' });
 
-    if (zoom) {
-      const rect = root.getBoundingClientRect();
-      const b = boat.getBoundingClientRect();
+    if (!rm()) {
       world.getAnimations().forEach((a) => a.cancel());
-      world.style.transformOrigin = `${b.left + b.width * 0.52 - rect.left}px ${b.top + b.height * 0.3 - rect.top}px`;
-      world.animate(
-        [
-          { transform: 'scale(1)', filter: 'blur(0)', opacity: 1 },
-          { transform: 'scale(3.4)', filter: 'blur(10px)', opacity: 0 },
-        ],
-        { duration: dur, easing: 'cubic-bezier(.5,0,.7,.4)', fill: 'forwards' },
-      );
       rod.animate(
         [{ transform: 'translate(140px, 200px)', opacity: 0 }, { transform: 'none', opacity: 1 }],
-        { duration: 1000, delay: 500, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'backwards' },
+        { duration: 900, delay: 600, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'backwards' },
       );
-      topbar.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: 1300, fill: 'backwards' });
+      topbar.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: 1100, fill: 'backwards' });
+      zoomThroughVeil({ box: root, world, boat, veil, hide: [world, shade] }).then(after);
     } else {
-      for (const el of [rod, topbar]) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: dur, fill: 'backwards' });
+      for (const el of [rod, topbar]) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, fill: 'backwards' });
+      stage.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 500, easing: 'ease-in', fill: 'forwards' }).onfinish = after;
     }
-    stage.animate([{ opacity: 1 }, { opacity: 0 }], { duration: dur, easing: 'ease-in', fill: 'forwards' }).onfinish = after;
   }
 
   // 5) 1인칭 바다 위 가운데에 마지막 한 줄, 사라지면 평소 바다로

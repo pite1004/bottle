@@ -553,6 +553,7 @@ h1, h2, p { margin: 0; }
 
 .rod {
   position: absolute;
+  z-index: 1400; /* 가까이 끌려온 병(최대 1250)보다 앞, 물보라(1500)보다 뒤 */
   inset: 0;
   width: 100%;
   height: 100%;
@@ -1021,6 +1022,18 @@ h1, h2, p { margin: 0; }
   font-size: 14px;
   cursor: pointer;
 }
+
+/* 3인칭 장면 → 1인칭 바다 전환: 장면을 다 덮었다가 걷히는 베일 (두 장면이 겹쳐 보이지 않게) */
+.zoom-veil {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: linear-gradient(var(--sky-top), var(--sky-bottom));
+  pointer-events: none;
+}
+
+.zooming { will-change: transform; }
+.zooming * { animation-play-state: paused !important; }
 
 /* 인트로가 덮고 있는 동안 1인칭 바다의 상단 바·낚싯대는 숨겨 둔다 (끝날 때 나타남) */
 #app.story-on .topbar { opacity: 0; }

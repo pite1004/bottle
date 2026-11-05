@@ -26,6 +26,26 @@ const BOTTLES = [
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const $ = (id) => document.getElementById(id);
 
+const VEIL_IN = 800;  // 장면이 확대되며 베일에 덮이는 시간
+const VEIL_OUT = 700; // 베일이 걷히며 1인칭 바다가 보이는 시간
+
+// 3인칭 장면 → 1인칭 바다. 두 장면이 겹쳐 보이지 않게 베일이 장면을 다 덮은 뒤에 걷힌다.
+// 폰에서 깜빡임이 나서 blur 필터는 쓰지 않고, 확대하는 동안 장면 속 움직임도 멈춘다.
+export function zoomThroughVeil({ box, world, boat, veil, hide = [world] }) {
+  const rect = box.getBoundingClientRect();
+  const b = boat.getBoundingClientRect();
+  world.style.transformOrigin = `${b.left + b.width * 0.52 - rect.left}px ${b.top + b.height * 0.3 - rect.top}px`; // 사람 머리·몸 쪽
+  world.classList.add('zooming');
+  world.animate([{ transform: 'scale(1)' }, { transform: 'scale(2.6)' }], { duration: VEIL_IN, easing: 'ease-in', fill: 'forwards' });
+  return new Promise((resolve) => {
+    veil.animate([{ opacity: 0 }, { opacity: 1 }], { duration: VEIL_IN, easing: 'ease-in', fill: 'forwards' }).onfinish = () => {
+      for (const el of hide) el.style.visibility = 'hidden';
+      veil.getAnimations().forEach((a) => a.cancel());
+      veil.animate([{ opacity: 1 }, { opacity: 0 }], { duration: VEIL_OUT, easing: 'ease-out', fill: 'forwards' }).onfinish = resolve;
+    };
+  });
+}
+
 export function createStory({ app, onStart = () => {}, onDone = () => {} }) {
   const story = $('story');
   const world = $('story-world');
@@ -33,6 +53,7 @@ export function createStory({ app, onStart = () => {}, onDone = () => {} }) {
   const startBtn = $('story-start');
   const skipBtn = $('story-skip');
   const privacy = $('story-privacy');
+  const veil = $('story-veil');
   const bottlesBox = $('story-bottles');
   const topbar = app.querySelector('.topbar');
   const rod = app.querySelector('.rod');
@@ -137,9 +158,11 @@ export function createStory({ app, onStart = () => {}, onDone = () => {} }) {
     startBtn.hidden = true;
     privacy.hidden = true;
     lineEl.textContent = '';
-    for (const el of [story, world, lineEl, skipBtn, startBtn, topbar, rod]) {
+    for (const el of [story, world, veil, lineEl, skipBtn, startBtn, topbar, rod]) {
       el.getAnimations().forEach((a) => a.cancel());
     }
+    world.classList.remove('zooming');
+    world.style.visibility = '';
     makeBottles();
     app.classList.add('story-on');
     story.hidden = false;
@@ -147,7 +170,7 @@ export function createStory({ app, onStart = () => {}, onDone = () => {} }) {
     timer = setTimeout(() => showLine(0), 500);
   }
 
-  // 1인칭 바다로 들어가기. full: 배에 탄 사람을 중심으로 확대되며 흐려진다 / 아니면 0.5초 크로스페이드
+  // 1인칭 바다로 들어가기. full: 배에 탄 사람을 중심으로 확대되며 베일에 덮인다 / 아니면 0.5초 크로스페이드
   function finish(full) {
     if (done) return;
     done = true;
@@ -155,43 +178,34 @@ export function createStory({ app, onStart = () => {}, onDone = () => {} }) {
     onStart(full); // 버튼을 누른 이 순간을 소리 시작 제스처로 쓴다 (full: 이야기 들어보기, 아니면 건너뛰기)
 
     const zoom = full && !reducedMotion.matches;
-    const dur = zoom ? 1500 : 500;
     app.classList.remove('story-on');
 
+    const end = () => {
+      story.hidden = true;
+      for (const el of [story, world, veil, lineEl.parentElement, skipBtn, privacy]) {
+        el.getAnimations().forEach((a) => a.cancel());
+      }
+      world.classList.remove('zooming');
+      world.style.visibility = '';
+      onDone();
+    };
+
     if (zoom) {
-      const rect = story.getBoundingClientRect();
-      const boat = $('story-boat').getBoundingClientRect();
-      const ox = boat.left + boat.width * 0.52 - rect.left;
-      const oy = boat.top + boat.height * 0.3 - rect.top; // 사람 머리·몸 쪽
-      world.style.transformOrigin = `${ox}px ${oy}px`;
-      world.animate(
-        [
-          { transform: 'scale(1)', filter: 'blur(0)', opacity: 1 },
-          { transform: 'scale(3.4)', filter: 'blur(10px)', opacity: 0 },
-        ],
-        { duration: dur, easing: 'cubic-bezier(.5,0,.7,.4)', fill: 'forwards' },
-      );
       for (const el of [lineEl.parentElement, skipBtn, privacy]) {
         el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 350, fill: 'forwards' });
       }
       rod.animate(
         [{ transform: 'translate(140px, 200px)', opacity: 0 }, { transform: 'none', opacity: 1 }],
-        { duration: 1000, delay: 500, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'backwards' },
+        { duration: 900, delay: VEIL_IN - 200, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'backwards' },
       );
-      topbar.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: 1300, fill: 'backwards' });
+      topbar.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: VEIL_IN + 300, fill: 'backwards' });
+      zoomThroughVeil({ box: story, world, boat: $('story-boat'), veil }).then(end);
     } else {
       for (const el of [rod, topbar]) {
-        el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: dur, fill: 'backwards' });
+        el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, fill: 'backwards' });
       }
+      story.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 500, easing: 'ease-in', fill: 'forwards' }).onfinish = end;
     }
-
-    story.animate([{ opacity: 1 }, { opacity: 0 }], { duration: dur, easing: 'ease-in', fill: 'forwards' }).onfinish = () => {
-      story.hidden = true;
-      for (const el of [story, world, lineEl.parentElement, skipBtn, privacy]) {
-        el.getAnimations().forEach((a) => a.cancel());
-      }
-      onDone();
-    };
   }
 
   startBtn.addEventListener('click', () => finish(true));
