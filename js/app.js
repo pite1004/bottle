@@ -1184,12 +1184,12 @@ function checkSeaGifts() {
 }
 
 // ---------- 꿈꾸기 ----------
-// 해금: 건진 쓰레기 10개 + 건진 편지 10통(바다가 보낸 병 제외) + 띄운 병 1개 이상
+// 해금: 쓰레기 1개 + 편지 1통(바다가 보낸 병 제외) + 띄운 병 1개 이상
 const dreamBtn = $('dream-btn');
 
 function checkDream() {
   if (!store.load('bottle.dream.unlocked', false)
-    && store.listCaught().length >= 10 && store.trashTotal() >= 10 && launchedCount() >= 1) {
+    && store.listCaught().length >= 1 && store.trashTotal() >= 1 && launchedCount() >= 1) {
     store.save('bottle.dream.unlocked', true);
     stats.track('dream_unlocked');
   }
