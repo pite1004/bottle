@@ -1,6 +1,7 @@
 // stats.html: 발표용 통계. 모든 숫자는 count() / sum() 집계 쿼리로 계산해서 읽기 비용을 줄인다.
 // 글귀 내용은 어디에도 표시하지 않는다.
 import { firebaseConfig } from '../firebase-config.js';
+import { columns, lines, stack } from './charts.js';
 
 const SDK = 'https://www.gstatic.com/firebasejs/13.1.0';
 const $ = (id) => document.getElementById(id);
@@ -14,6 +15,25 @@ const SOURCES = [
 ];
 const BLOCKS = [['contact', '연락처'], ['link', '링크'], ['profanity', '욕설·비하'], ['repeat', '같은 글자 반복'], ['crisis', '위기 문구']];
 const SEA = [['trash5', '쓰레기 5개'], ['letters5', '편지 5통'], ['letters10', '편지 10통'], ['reached', '내 병이 처음 닿음']];
+
+// 날짜별로 세는 이벤트
+const DAILY = {
+  visits: ['session_start'],
+  launched: ['bottle_launch'],
+  caught: ['catch_letter'],
+  shared: ['share_card', 'save_image'],
+  cast: ['cast'],
+  trash: ['catch_trash'],
+  introStart: ['intro_start'],
+  introDone: ['intro_complete'],
+  introSkip: ['intro_skip'],
+};
+const DAY_CHARTS = [
+  ['day-visits', 'visits', '회'], ['day-cast', 'cast', '번'], ['day-caught', 'caught', '통'],
+  ['day-trash', 'trash', '개'], ['day-launched', 'launched', '개'], ['day-shared', 'shared', '회'],
+];
+// 범주 색 (여러 값을 함께 그릴 때 이 순서로)
+const COLOR = ['#3987e5', '#d95926', '#199e70'];
 
 let db, fs;
 let dailyRows = [];
@@ -128,27 +148,31 @@ async function load() {
 
     // 최근 14일
     const days = lastDays(14);
-    const kinds = [['session_start'], ['bottle_launch'], ['catch_letter'], ['share_card', 'save_image']];
-    const dayCounts = await all(days.flatMap((d) => kinds.map((types) => async () => {
-      const n = await Promise.all(types.map((t) => count(ev(['typeDate', '==', `${t}_${d}`]))));
+    const names = Object.keys(DAILY);
+    const dayCounts = await all(days.flatMap((d) => names.map((k) => async () => {
+      const n = await Promise.all(DAILY[k].map((t) => count(ev(['typeDate', '==', `${t}_${d}`]))));
       return n.reduce((a, b) => a + b, 0);
     })));
     dailyRows = days.map((d, i) => ({
       date: d,
-      visits: dayCounts[i * 4],
-      launched: dayCounts[i * 4 + 1],
-      caught: dayCounts[i * 4 + 2],
-      shared: dayCounts[i * 4 + 3],
+      ...Object.fromEntries(names.map((k, j) => [k, dayCounts[i * names.length + j]])),
     }));
+    const dayLabel = (r) => r.date.slice(5).replace('-', '.');
+    for (const [id, key, unit] of DAY_CHARTS) {
+      columns($(id), dailyRows.map((r) => ({ label: dayLabel(r), value: r[key] })), { unit, height: 160 });
+    }
+    lines($('intro-chart'), dailyRows.map(dayLabel), [
+      { name: '인트로 시작', color: COLOR[0], values: dailyRows.map((r) => r.introStart) },
+      { name: '버튼 누름', color: COLOR[1], values: dailyRows.map((r) => r.introDone) },
+      { name: '건너뛰기', color: COLOR[2], values: dailyRows.map((r) => r.introSkip) },
+    ], { unit: '번' });
     $('daily').innerHTML = `<tr><th>날짜</th><th>방문</th><th>띄운 병</th><th>건진 편지</th><th>공유·저장</th></tr>`
       + dailyRows.slice().reverse().map((r) => `<tr><td>${r.date.slice(5).replace('-', '.')}</td><td>${fmt(r.visits)}</td><td>${fmt(r.launched)}</td><td>${fmt(r.caught)}</td><td>${fmt(r.shared)}</td></tr>`).join('');
     $('csv-btn').disabled = false;
 
     // 시간대별 건진 편지
     const hours = await all([...Array(24).keys()].map((h) => () => count(ev(['typeHour', '==', `catch_letter_${h}`]))));
-    const hmax = Math.max(1, ...hours);
-    $('hourly').innerHTML = hours.map((n, h) => `
-      <div class="col" title="${h}시 ${n}통"><b>${n || ''}</b><div class="stick" style="height:${(n / hmax) * 100}%"></div><span>${h}</span></div>`).join('');
+    columns($('hourly'), hours.map((n, h) => ({ label: String(h), title: `${h}시`, value: n })), { unit: '통' });
 
     // 유입 경로 · 기기
     const src = await all(SOURCES.map(([k]) => () => count(where('visitors', ['firstSource', '==', k]))));
@@ -160,12 +184,14 @@ async function load() {
       () => count(where('visitors', ['os', '==', 'android'])),
       () => count(where('visitors', ['os', '==', 'other'])),
     ]);
-    bars($('devices'), [
-      { label: '모바일', value: dev[0], note: pct(dev[0], dev[0] + dev[1]) },
-      { label: 'PC', value: dev[1], note: pct(dev[1], dev[0] + dev[1]) },
-      { label: 'iOS', value: dev[2], note: pct(dev[2], dev[2] + dev[3] + dev[4]) },
-      { label: '안드로이드', value: dev[3], note: pct(dev[3], dev[2] + dev[3] + dev[4]) },
-      { label: '그 밖', value: dev[4], note: pct(dev[4], dev[2] + dev[3] + dev[4]) },
+    stack($('devices-kind'), [
+      { label: '모바일', value: dev[0], color: COLOR[0] },
+      { label: 'PC', value: dev[1], color: COLOR[1] },
+    ]);
+    stack($('devices-os'), [
+      { label: 'iOS', value: dev[2], color: COLOR[0] },
+      { label: '안드로이드', value: dev[3], color: COLOR[1] },
+      { label: '그 밖', value: dev[4], color: COLOR[2] },
     ]);
 
     // 안전 · 검열 (차단된 글의 내용은 저장하지 않고 이유만)

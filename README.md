@@ -41,6 +41,7 @@ js/journey.js         내 병의 여정 화면 (#journey/병ID)
 js/dream.js           꿈꾸기 장면 (문장은 맨 위 LINES 배열에서 고치면 돼요)
 js/stats.js           익명 이용 통계 기록 (방문자·이벤트)
 js/stats-page.js      stats.html의 집계 (count/sum 쿼리)
+js/charts.js          stats.html의 그래프
 js/sea.js             바다 그리기, 병 움직임, 낚시
 js/bottle.js          병·쓰레기 그림(SVG), 꾸미기 선택지
 js/store.js           Firebase / 체험 모드 저장

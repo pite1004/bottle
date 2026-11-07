@@ -394,6 +394,7 @@ js/bottle.js            # 병·쓰레기·바다가 보낸 병 SVG 생성
 js/store.js             # Firebase / 체험 모드 저장소
 js/stats.js             # 통계 기록 (방문자·이벤트 큐)
 js/stats-page.js        # stats.html 집계
+js/charts.js            # stats.html 그래프 (SVG)
 js/journey.js           # 내 병의 여정 화면
 js/intro.js, js/guide.js, js/seasent.js
 js/dream.js             # 꿈꾸기 장면 (문장은 맨 위 LINES 배열)
@@ -476,7 +477,7 @@ typeDate: 'catch_letter_2026-11-04', typeHour: 'catch_letter_21'   — 인덱스
 * 모든 숫자는 `count()` / `sum()` 집계 쿼리로 (읽기 비용 절약)
 * 큰 숫자: 참여자 수, 재방문자 수(visitCount ≥ 2), 띄운 병 수, 오간 편지 수(catches 합계), 편지를 건진 사람 수, 건져낸 쓰레기 수, 공유 횟수, 공유 카드로 들어온 사람 수, 10개를 모두 띄운 사람 수(visitors.bottlesLaunched ≥ 10), 병을 띄운 사람 1인당 평균 띄운 병 수, 꿈꾸기 해금 인원(dreamUnlocks ≥ 1), 꿈을 끝까지 본 인원(dreamCompletes ≥ 1)
 * 퍼널: 방문 → 인트로 완료 → 첫 던짐 → 첫 건짐 → 글쓰기 시작 → 병 띄움 → 공유 (단계별 인원·전환율, visitors 누계 ≥ 1로 셈)
-* 최근 14일 날짜별: 방문, 띄운 병, 건진 편지, 공유 / 시간대별(0~23시) 건진 편지
+* 최근 14일 날짜별 그래프(막대): 방문, 던짐, 건진 편지, 건져낸 쓰레기, 띄운 병, 공유 + 표로 보기 / 인트로 시작·버튼 누름·건너뛰기 선 그래프 / 시간대별(0~23시) 건진 편지 막대. 그래프는 `js/charts.js`(외부 라이브러리 없이 SVG), 값은 마우스를 올리거나 탭하면 표시
 * 유입 경로 비율, 기기(모바일/PC, iOS/안드로이드) 비율
 * 검열 차단 이유별 횟수, 신고 횟수, 숨김 병 수
 * 병 1개당 평균 도달 인원, 가장 많이 닿은 병의 도달 수(글귀는 표시하지 않음)

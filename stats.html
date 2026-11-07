@@ -45,7 +45,8 @@
     .card dt { color: var(--sub); font-size: 15px; }
     .card dd { margin: 8px 0 0; font-size: 48px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
     .card dd small { font-size: 15px; font-weight: 400; color: var(--sub); margin-left: 6px; }
-    .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 14px; }
+    .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); gap: 14px; }
+    .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 14px; }
     .bars { display: flex; flex-direction: column; gap: 10px; }
     .bar-row { display: grid; grid-template-columns: 130px 1fr 110px; gap: 12px; align-items: center; font-size: 15px; }
     .bar-track { height: 22px; border-radius: 6px; background: #26323f; overflow: hidden; }
@@ -53,11 +54,38 @@
     .bar-row .num { text-align: right; font-variant-numeric: tabular-nums; }
     .bar-row .num small { color: var(--sub); }
     .funnel .bar-fill { background: linear-gradient(90deg, #2f6f9f, var(--accent)); }
-    .cols { display: flex; align-items: flex-end; gap: 4px; height: 180px; padding-top: 22px; }
-    .col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
-    .col .stick { width: 100%; max-width: 28px; background: var(--accent-2); border-radius: 4px 4px 0 0; min-height: 1px; }
-    .col span { font-size: 11px; color: var(--sub); font-variant-numeric: tabular-nums; }
-    .col b { font-size: 11px; font-weight: 500; }
+    .chart svg { display: block; max-width: 100%; }
+    .chart .grid { stroke: var(--line); stroke-width: 1; }
+    .chart .axis { fill: var(--sub); font-size: 12px; font-variant-numeric: tabular-nums; }
+    .chart .peak { fill: var(--ink); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .chart .bar { fill: #3987e5; }
+    .chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+    .chart .dot { stroke: var(--panel); stroke-width: 2; }
+    .chart .cross { stroke: var(--sub); stroke-width: 1; }
+    .chart .cross[hidden] { display: none; }
+    .chart .hit { fill: transparent; outline: none; }
+    .chart .hit:focus-visible { stroke: var(--accent); }
+    .tile-title { margin: 0 0 8px; font-size: 15px; color: var(--sub); }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--sub); }
+    .legend i { display: inline-block; width: 12px; height: 12px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+    .legend b { color: var(--ink); font-weight: 500; }
+    .chart > .legend { margin-bottom: 10px; }
+    .stack { display: flex; gap: 2px; height: 22px; margin-bottom: 10px; }
+    .stack .seg { min-width: 4px; }
+    .stack .seg:first-child { border-radius: 4px 0 0 4px; }
+    .stack .seg:last-child { border-radius: 0 4px 4px 0; }
+    .stack-block + .stack-block { margin-top: 20px; }
+    .chart-tip {
+      position: fixed; z-index: 10; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px;
+      background: #0f141b; color: var(--ink); font-size: 14px; pointer-events: none;
+    }
+    .chart-tip[hidden] { display: none; }
+    .chart-tip p { margin: 0 0 4px; color: var(--sub); font-size: 13px; }
+    .chart-tip div { display: flex; align-items: center; gap: 6px; }
+    .chart-tip i { width: 12px; height: 2px; border-radius: 1px; }
+    .chart-tip b { font-weight: 700; font-variant-numeric: tabular-nums; }
+    details { margin-top: 14px; }
+    summary { min-height: 44px; display: flex; align-items: center; color: var(--sub); cursor: pointer; }
     table { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
     th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: right; }
     th:first-child, td:first-child { text-align: left; }
@@ -87,12 +115,24 @@
       <p class="note">각 단계를 한 번이라도 해 본 사람 수. 괄호는 앞 단계 대비 전환율.</p></div>
 
     <h2>최근 14일</h2>
-    <div class="card">
-      <table id="daily"></table>
+    <div class="grid3">
+      <div class="card"><p class="tile-title">방문</p><div class="chart" id="day-visits"></div></div>
+      <div class="card"><p class="tile-title">낚싯대 던짐</p><div class="chart" id="day-cast"></div></div>
+      <div class="card"><p class="tile-title">건진 편지</p><div class="chart" id="day-caught"></div></div>
+      <div class="card"><p class="tile-title">건져낸 쓰레기</p><div class="chart" id="day-trash"></div></div>
+      <div class="card"><p class="tile-title">띄운 병</p><div class="chart" id="day-launched"></div></div>
+      <div class="card"><p class="tile-title">공유 · 저장</p><div class="chart" id="day-shared"></div></div>
     </div>
+    <details class="card">
+      <summary>날짜별 표로 보기</summary>
+      <table id="daily"></table>
+    </details>
+
+    <h2>인트로에서 어디까지 갔나</h2>
+    <div class="card"><div class="chart" id="intro-chart"></div></div>
 
     <h2>시간대별 건진 편지 (한국 시간)</h2>
-    <div class="card"><div class="cols" id="hourly"></div></div>
+    <div class="card"><div class="chart" id="hourly"></div></div>
 
     <div class="grid2">
       <div>
@@ -101,7 +141,10 @@
       </div>
       <div>
         <h2>기기</h2>
-        <div class="card"><div class="bars" id="devices"></div></div>
+        <div class="card">
+          <div class="stack-block chart" id="devices-kind"></div>
+          <div class="stack-block chart" id="devices-os"></div>
+        </div>
       </div>
     </div>
 
