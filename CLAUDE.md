@@ -439,7 +439,7 @@ README.md               # 사용자가 따라 할 설정·배포 가이드(한�
 ```
 firstSeen, lastSeen: serverTimestamp
 visitCount: number          — 30분 이상 지나서 다시 열면 +1
-firstSource: 'card'|'journey'|'record'|'instagram'|'kakao'|'other'|'direct'  — 첫 방문 때 유입 경로
+firstSource: 'card'|'journey'|'record'|'instagram'|'kakao'|'everytime'|'poster'|'other'|'direct'  — 첫 방문 때 유입 경로
 device: 'mobile'|'desktop', os: 'ios'|'android'|'other'
 개인 누계(줄어들지 않음): introCompletes, castCount, lettersCaught, trashCaught, seaBottles,
   writeStarts, bottlesLaunched, shareCount, starsGiven, dreamUnlocks, dreamCompletes
@@ -451,7 +451,8 @@ device: 'mobile'|'desktop', os: 'ios'|'android'|'other'
 ### 유입 경로
 
 * URL의 `?ref=`로 판단: 편지 카드 `ref=card`, 여정 카드 `ref=journey`, 기록 카드 `ref=record`. 공유 링크에는 `&b=병ID`도 (기록 카드는 병 없음)
-* ref가 없으면 `document.referrer`로 instagram / kakao / other / direct
+* 홍보 채널별 링크: `?ref=insta`(인스타그램), `?ref=kakao`, `?ref=everytime`, `?ref=poster`(포스터·QR). 앱 안 브라우저가 출처를 숨겨도 셀 수 있다. 새 이름은 `js/stats.js`의 `REF_SOURCES`, `firestore.rules`, `js/stats-page.js`의 `SOURCES`에 함께 추가
+* ref가 없으면 `document.referrer`로 instagram / kakao / everytime / other / direct
 * 첫 방문 때의 경로만 `visitors.firstSource`에 저장 → "공유 카드로 유입된 사람 수"
 
 ### 이벤트 `events/{자동 ID}` (추가만 가능)

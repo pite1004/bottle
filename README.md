@@ -91,6 +91,16 @@ python tools/make_images.py
 1. [카카오 공유 디버거](https://developers.kakao.com/tool/debugger/sharing)에 사이트 주소를 넣고 미리보기를 봐요. 예전 모습이 나오면 **캐시 초기화**를 눌러요 (카카오 개발자 계정 로그인 필요)
 2. [페이스북 공유 디버거](https://developers.facebook.com/tools/debug/)에 주소를 넣고 **디버그**를 눌러 og 태그가 인식되는지 봐요. 예전 모습이면 **다시 스크랩**
 
+### 홍보 링크 구분하기
+올리는 곳마다 다른 링크를 쓰면 stats.html의 유입 경로에 따로 세어져요. 처음 들어온 경로만 기록돼요.
+
+| 올리는 곳 | 링크 |
+| --- | --- |
+| 인스타그램 | `https://www.bottleletter2100.com/?ref=insta` |
+| 카카오톡 | `https://www.bottleletter2100.com/?ref=kakao` |
+| 에브리타임 | `https://www.bottleletter2100.com/?ref=everytime` |
+| 포스터·QR | `https://www.bottleletter2100.com/?ref=poster` |
+
 ### 보안 규칙을 바꿨을 때
 [firestore.rules](firestore.rules)를 고치면 Firebase 콘솔에도 다시 붙여 넣어야 적용돼요 (아래 5-1의 6번과 같은 방법).
 

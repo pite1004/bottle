@@ -9,7 +9,8 @@ const pct = (a, b) => (b ? `${Math.round((a / b) * 100)}%` : '—');
 
 const SOURCES = [
   ['card', '편지 카드'], ['journey', '여정 카드'], ['record', '기록 카드'],
-  ['instagram', '인스타그램'], ['kakao', '카카오톡'], ['other', '기타 사이트'], ['direct', '직접 접속'],
+  ['instagram', '인스타그램'], ['kakao', '카카오톡'], ['everytime', '에브리타임'], ['poster', '포스터·QR'],
+  ['other', '기타 사이트'], ['direct', '직접 접속'],
 ];
 const BLOCKS = [['contact', '연락처'], ['link', '링크'], ['profanity', '욕설·비하'], ['repeat', '같은 글자 반복'], ['crisis', '위기 문구']];
 const SEA = [['trash5', '쓰레기 5개'], ['letters5', '편지 5통'], ['letters10', '편지 10통'], ['reached', '내 병이 처음 닿음']];

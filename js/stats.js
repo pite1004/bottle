@@ -42,7 +42,13 @@ function kst(ms = Date.now()) {
   return { date: d.toISOString().slice(0, 10), hour: d.getUTCHours() };
 }
 
-// 유입 경로: ?ref=card|journey|record, 없으면 referrer로 instagram/kakao/other/direct
+// 홍보 채널별 링크 (?ref=이름). 새 이름을 넣으려면 firestore.rules의 firstSource 목록과 stats-page.js의 SOURCES에도 추가한다
+const REF_SOURCES = {
+  card: 'card', journey: 'journey', record: 'record',
+  insta: 'instagram', instagram: 'instagram', kakao: 'kakao', everytime: 'everytime', poster: 'poster',
+};
+
+// 유입 경로: ?ref=, 없으면 referrer로 instagram/kakao/everytime/other/direct
 // 주소창에 남지 않게 ref·b는 읽은 뒤 지운다.
 function readSource() {
   const url = new URL(location.href);
@@ -52,7 +58,7 @@ function readSource() {
     url.searchParams.delete('b');
     history.replaceState(history.state, '', url.pathname + url.search + url.hash);
   }
-  if (['card', 'journey', 'record'].includes(ref)) return ref;
+  if (Object.hasOwn(REF_SOURCES, ref)) return REF_SOURCES[ref];
   const r = document.referrer;
   if (!r) return 'direct';
   try {
@@ -60,6 +66,7 @@ function readSource() {
     if (host === location.hostname) return 'direct';
     if (/instagram/i.test(host)) return 'instagram';
     if (/kakao/i.test(host)) return 'kakao';
+    if (/everytime/i.test(host)) return 'everytime';
   } catch {
     // 이상한 referrer는 기타로
   }

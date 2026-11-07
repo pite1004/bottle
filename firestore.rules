@@ -104,7 +104,7 @@ service cloud.firestore {
         && request.resource.data.firstSeen == request.time
         && request.resource.data.lastSeen == request.time
         && request.resource.data.visitCount == 1
-        && request.resource.data.firstSource in ['card','journey','record','instagram','kakao','other','direct']
+        && request.resource.data.firstSource in ['card','journey','record','instagram','kakao','everytime','poster','other','direct']
         && countersStartAtZero();
 
       allow update: if request.auth != null && request.auth.uid == uid
