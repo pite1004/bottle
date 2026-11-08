@@ -212,7 +212,8 @@ export function createSea(scene, {
   function nextBottle() {
     const onScreen = new Set(floaters.filter((f) => f.kind === 'bottle').map((f) => f.data.id));
     for (let tries = 0; tries < 2; tries++) {
-      if (queue.length === 0) queue = shuffle(pool.slice());
+      // 아직 안 건진 병이 먼저 (pop은 뒤에서부터), 그다음 다시 만나는 병
+      if (queue.length === 0) queue = [...shuffle(pool.filter((b) => b.again)), ...shuffle(pool.filter((b) => !b.again))];
       while (queue.length) {
         const b = queue.pop();
         if (!onScreen.has(b.id)) return b;
@@ -223,7 +224,7 @@ export function createSea(scene, {
 
   function targetCount() {
     if (pool.length === 0) return 2; // 비었을 땐 쓰레기만 가끔
-    return Math.min(Math.round(TARGET_COUNT * Math.min(wide, 2.5)), pool.length + 2); // 병이 적을 땐 같은 병이 겹쳐 나오지 않게
+    return Math.min(Math.round(TARGET_COUNT * Math.min(wide, 1.4)), pool.length + 2); // 병이 적을 땐 같은 병이 겹쳐 나오지 않게
   }
 
   // 흐름 속도: 가까울수록 빠르게 + 병마다 약간 다르게

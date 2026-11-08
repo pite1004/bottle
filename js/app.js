@@ -231,6 +231,12 @@ const sea = createSea($('scene'), {
   onProgress: renderProgress,
   async onLanded(f) {
     showFishPanel(false);
+    if (f.kind === 'bottle' && f.data.again) {
+      // 전에 건진 병을 다시 건짐: 다시 읽기만 (보관함·통계에 또 세지 않음)
+      showLetter(f.data);
+      location.hash = 'letter';
+      return;
+    }
     addArchiveNew();
     if (f.data.special) {
       // 바다가 보낸 병: 이 기기에만 기록 (Firestore에 저장하지 않음)
@@ -247,7 +253,8 @@ const sea = createSea($('scene'), {
       queueCoach('caught');
       showLetter(f.data);
       location.hash = 'letter';
-      seaPool = seaPool.filter((b) => b.id !== f.data.id);
+      // 건진 병은 나중에 다시 만날 수 있게 남겨 둔다 (새 병이 먼저 떠내려온다)
+      seaPool = seaPool.map((b) => (b.id === f.data.id ? { ...b, again: true } : b));
       sea.setPool(seaPool);
       checkSeaGifts();
     } else {
@@ -346,13 +353,13 @@ function letterMeta(createdAt) {
 // from: 'sea'(방금 건짐) 또는 'archive'(보관함에서 다시 보기) — 뒤로 가기 위치
 function showLetter(b, from = 'sea') {
   currentLetter = b;
-  letterFresh = from === 'sea';
+  letterFresh = from === 'sea' && !b.again;
   const back = $('letter-back');
   back.href = from === 'archive' ? '#archive' : '#sea';
   back.setAttribute('aria-label', from === 'archive' ? '보관함으로 돌아가기' : '바다로 돌아가기');
   const fromSea = !!b.special;
   $('letter-return').textContent = from === 'archive' ? '바다로 가기' : '바다로 돌려보내기';
-  $('letter-title').textContent = fromSea ? '바다가 보낸 병' : '건진 병';
+  $('letter-title').textContent = fromSea ? '바다가 보낸 병' : b.again && from === 'sea' ? '다시 만난 병' : '건진 병';
   $('letter-card').classList.toggle('from-sea', fromSea);
   $('letter-bottle').classList.toggle('from-sea', fromSea);
   $('letter-from').hidden = !fromSea;
@@ -1046,27 +1053,10 @@ function playStory() {
   story.play();
 }
 
-// ---------- 상단 바 메뉴 ----------
-const menuBtn = $('menu-btn');
-const topMenu = $('top-menu');
-
-function setMenu(open) {
-  topMenu.hidden = !open;
-  menuBtn.setAttribute('aria-expanded', String(open));
-}
-
-menuBtn.addEventListener('click', () => setMenu(topMenu.hidden));
-document.addEventListener('click', (e) => {
-  if (!topMenu.hidden && !e.target.closest('.menu-wrap')) setMenu(false);
-});
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !topMenu.hidden) {
-    setMenu(false);
-    menuBtn.focus();
-  }
-});
-$('replay-story-btn').addEventListener('click', () => {
-  setMenu(false);
+// ---------- 상단 바: 처음 이야기 보기 ----------
+$('story-btn').addEventListener('click', () => {
+  if (story.playing || dream.playing) return;
+  if (sea.busy) releaseFish();
   stats.track('replay_intro');
   playStory();
 });
@@ -1322,8 +1312,11 @@ sound.setup(store.load('bottle.sound', true));
 renderWrite();
 window.addEventListener('hashchange', route);
 route();
-// 처음 방문이고 바다로 들어올 때만 인트로를 자동 재생
-if (!store.load('bottle.seenStory', false) && !screens.sea.hidden) playStory();
+// 인트로는 자동으로 틀지 않고 바로 바다로 (상단 바 '이야기' 버튼으로 본다). 처음 온 사람에겐 통계 안내만 한 번
+if (!store.load('bottle.seenStory', false)) {
+  store.save('bottle.seenStory', true);
+  toast('서비스 개선을 위해 익명 이용 통계를 모아요. 이름이나 연락처는 수집하지 않아요.', 6000);
+}
 await loadSea();
 seaReady = true;
 checkSeaGifts(); // 지난번에 조건을 채웠지만 아직 못 건진 병도 다시 떠내려온다 (꿈꾸기 해금도 여기서 확인)
