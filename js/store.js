@@ -189,7 +189,7 @@ async function pickSeaBottles() {
   return { list: [...picked.values()], newest: newest.empty ? 0 : fromDoc(newest.docs[0]).createdAt };
 }
 
-// 바다에 띄울 병에서 숨김·내 병을 뺀다. 이미 건진 병은 again 표시를 달아 남겨 두고(바다가 비어 보이지 않게), 새 병이 먼저 떠내려온다.
+// 바다에 띄울 병에서 숨김·내 병·이미 건진 병을 뺀다.
 export async function listSeaBottles() {
   await ensureReady();
   let list;
@@ -199,12 +199,7 @@ export async function listSeaBottles() {
     list = demoBottles().slice().sort((a, b) => b.createdAt - a.createdAt).slice(0, SEA_SIZE);
     newestSeen = list.length ? list[0].createdAt : 0;
   }
-  const uid = myUid();
-  const mine = mineIds();
-  const caught = caughtIds();
-  return list
-    .filter((b) => !b.hidden && b.owner !== uid && !mine.has(b.id))
-    .map((b) => (caught.has(b.id) ? { ...b, again: true } : b));
+  return list.filter(canFloat);
 }
 
 // 앱을 연 뒤에 새로 띄워진 병을 실시간으로 받는다. 새 병만 듣기 때문에 읽기는 새 병 수만큼만 든다.

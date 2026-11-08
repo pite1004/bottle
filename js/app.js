@@ -231,12 +231,6 @@ const sea = createSea($('scene'), {
   onProgress: renderProgress,
   async onLanded(f) {
     showFishPanel(false);
-    if (f.kind === 'bottle' && f.data.again) {
-      // 전에 건진 병을 다시 건짐: 다시 읽기만 (보관함·통계에 또 세지 않음)
-      showLetter(f.data);
-      location.hash = 'letter';
-      return;
-    }
     addArchiveNew();
     if (f.data.special) {
       // 바다가 보낸 병: 이 기기에만 기록 (Firestore에 저장하지 않음)
@@ -253,8 +247,7 @@ const sea = createSea($('scene'), {
       queueCoach('caught');
       showLetter(f.data);
       location.hash = 'letter';
-      // 건진 병은 나중에 다시 만날 수 있게 남겨 둔다 (새 병이 먼저 떠내려온다)
-      seaPool = seaPool.map((b) => (b.id === f.data.id ? { ...b, again: true } : b));
+      seaPool = seaPool.filter((b) => b.id !== f.data.id);
       sea.setPool(seaPool);
       checkSeaGifts();
     } else {
@@ -353,13 +346,13 @@ function letterMeta(createdAt) {
 // from: 'sea'(방금 건짐) 또는 'archive'(보관함에서 다시 보기) — 뒤로 가기 위치
 function showLetter(b, from = 'sea') {
   currentLetter = b;
-  letterFresh = from === 'sea' && !b.again;
+  letterFresh = from === 'sea';
   const back = $('letter-back');
   back.href = from === 'archive' ? '#archive' : '#sea';
   back.setAttribute('aria-label', from === 'archive' ? '보관함으로 돌아가기' : '바다로 돌아가기');
   const fromSea = !!b.special;
   $('letter-return').textContent = from === 'archive' ? '바다로 가기' : '바다로 돌려보내기';
-  $('letter-title').textContent = fromSea ? '바다가 보낸 병' : b.again && from === 'sea' ? '다시 만난 병' : '건진 병';
+  $('letter-title').textContent = fromSea ? '바다가 보낸 병' : '건진 병';
   $('letter-card').classList.toggle('from-sea', fromSea);
   $('letter-bottle').classList.toggle('from-sea', fromSea);
   $('letter-from').hidden = !fromSea;

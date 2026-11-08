@@ -212,8 +212,7 @@ export function createSea(scene, {
   function nextBottle() {
     const onScreen = new Set(floaters.filter((f) => f.kind === 'bottle').map((f) => f.data.id));
     for (let tries = 0; tries < 2; tries++) {
-      // 아직 안 건진 병이 먼저 (pop은 뒤에서부터), 그다음 다시 만나는 병
-      if (queue.length === 0) queue = [...shuffle(pool.filter((b) => b.again)), ...shuffle(pool.filter((b) => !b.again))];
+      if (queue.length === 0) queue = shuffle(pool.slice());
       while (queue.length) {
         const b = queue.pop();
         if (!onScreen.has(b.id)) return b;
