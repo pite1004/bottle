@@ -217,6 +217,21 @@ export function watchNewBottles({ onAdd, onRemove }) {
   }, (err) => console.error(err));
 }
 
+// 친구가 보낸 링크(?b=병ID)의 병 하나. 바다에 띄울 수 있는 병일 때만 (숨김·내 병·이미 건진 병이면 null)
+export async function getFloatable(id) {
+  await ensureReady();
+  if (!/^[\w-]{1,80}$/.test(id)) return null;
+  let b = null;
+  if (fb) {
+    const { doc, getDoc } = fb.fs;
+    const snap = await getDoc(doc(fb.db, 'bottles', id));
+    if (snap.exists()) b = fromDoc(snap);
+  } else {
+    b = demoBottles().find((x) => x.id === id) || null;
+  }
+  return b && canFloat(b) ? b : null;
+}
+
 // 이 기기에서 건진 편지 (최근 것부터)
 export function listCaught() {
   return load(KEY.caught, []);

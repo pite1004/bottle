@@ -45,7 +45,7 @@ function kst(ms = Date.now()) {
 
 // 홍보 채널별 링크 (?ref=이름). 새 이름을 넣으려면 firestore.rules의 firstSource 목록과 stats-page.js의 SOURCES에도 추가한다
 const REF_SOURCES = {
-  card: 'card', journey: 'journey', record: 'record',
+  card: 'card', journey: 'journey', record: 'record', friend: 'card', // friend: 친구에게 보낸 링크 (공유로 들어온 사람에 함께 센다)
   insta: 'instagram', instagram: 'instagram', kakao: 'kakao', everytime: 'everytime', poster: 'poster',
 };
 

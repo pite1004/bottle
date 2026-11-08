@@ -316,6 +316,7 @@ async function loadSea() {
     if (params.has('empty')) return sea.setPool([]);
     seaPool = await store.listSeaBottles();
     sea.setPool(seaPool);
+    bringLinkedBottle();
     store.watchNewBottles({
       onAdd(b) {
         if (seaPool.some((x) => x.id === b.id)) return;
@@ -331,6 +332,21 @@ async function loadSea() {
   } catch (err) {
     console.error(err);
     toast('바다에 연결하지 못했어요. 잠시 뒤 다시 열어 주세요');
+  }
+}
+
+// 친구가 보낸 링크(?b=병ID)로 들어왔으면 그 병이 가장 먼저 떠내려온다
+async function bringLinkedBottle() {
+  const id = params.get('b');
+  if (!id) return;
+  try {
+    const b = seaPool.find((x) => x.id === id) || await store.getFloatable(id);
+    if (!b) return;
+    if (!seaPool.some((x) => x.id === b.id)) seaPool.push(b);
+    sea.bringNext(b);
+    toast('누군가 보낸 병이 곧 떠내려와요', 4000);
+  } catch (err) {
+    console.error(err);
   }
 }
 
@@ -357,6 +373,8 @@ function showLetter(b, from = 'sea') {
   $('letter-bottle').classList.toggle('from-sea', fromSea);
   $('letter-from').hidden = !fromSea;
   $('report-btn').hidden = fromSea;
+  $('letter-friend-btn').hidden = fromSea; // 바다가 보낸 병은 앱 안 고정 내용이라 링크로 보낼 수 없다
+  friendBottle = fromSea ? null : b;
   $('star-btn').hidden = fromSea;
   $('letter-bottle').innerHTML = anyBottleSVG(b);
   const text = $('letter-text');
@@ -456,6 +474,40 @@ async function deliverCard(how) {
 }
 
 $('save-card-btn').addEventListener('click', () => deliverCard('save'));
+
+// ---------- 친구에게 링크 보내기 ----------
+// 링크를 연 친구의 바다에 이 병이 가장 먼저 떠내려온다. 글귀는 링크에 넣지 않는다 (병 ID만)
+const FRIEND_TEXT = {
+  sent: '2100년, 물에 잠긴 바다에 내 병을 띄웠어요. 당신이 건져줄래요?',
+  letter: '2100년의 바다에서 누군가의 병을 건졌어요. 당신에게도 이 병이 떠내려갈 거예요.',
+};
+let friendBottle = null;
+
+async function tellFriend(kind) {
+  if (!friendBottle) return;
+  const url = `${location.origin}/?${new URLSearchParams({ ref: 'friend', b: friendBottle.id })}`;
+  const text = FRIEND_TEXT[kind];
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: '유리병 편지', text, url });
+      stats.track('share_card', `link-${kind}`);
+      return;
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+      // 공유 시트가 막히면 링크 복사로
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(`${text}\n${url}`);
+    stats.track('share_card', `link-${kind}`);
+    toast('링크를 복사했어요. 친구에게 붙여 넣어 보내 주세요', 4000);
+  } catch {
+    window.prompt('아래 링크를 복사해서 친구에게 보내 주세요', url);
+  }
+}
+
+$('letter-friend-btn').addEventListener('click', () => tellFriend('letter'));
+$('sent-friend-btn').addEventListener('click', () => tellFriend('sent'));
 
 // ---------- 04-b 쓰레기 ----------
 const FOUND_TITLE = {
@@ -702,6 +754,7 @@ async function renderFull() {
 function renderSent(b) {
   $('sent-last').hidden = remaining() !== 1;
   $('sent-bottle').innerHTML = bottleSVG(b);
+  friendBottle = b;
   $('share-bottle').innerHTML = bottleSVG(b);
   const text = $('share-text');
   text.textContent = b.text;

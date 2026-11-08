@@ -2232,3 +2232,4 @@ button.archive-item[data-journey] .badge { pointer-events: none; }
   .topbar { gap: 4px; padding-left: 12px; padding-right: 12px; }
   .topbar-sub { letter-spacing: 0; }
 }
+.btn[hidden] { display: none; }

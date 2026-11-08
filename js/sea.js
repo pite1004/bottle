@@ -188,6 +188,16 @@ export function createSea(scene, {
     if (running) checkEmpty();
   }
 
+  // 친구가 링크로 보낸 병: 목록에 없으면 넣고, 바로 다음 차례로 떠내려오게 한다
+  function bringNext(b) {
+    if (!pool.some((x) => x.id === b.id)) pool.push(b);
+    if (floaters.some((f) => f.kind === 'bottle' && f.data.id === b.id)) return; // 이미 화면에 있음
+    queue = queue.filter((x) => x.id !== b.id);
+    queue.push(b); // queue는 뒤에서부터 꺼낸다
+    spawnTimer = Math.min(spawnTimer, 1.5);
+    if (running) checkEmpty();
+  }
+
   // 바다가 보낸 병 목록. 새로 생기면 곧바로 상류에서 떠내려오게 한다.
   function setSpecial(list) {
     const before = new Set(special.map((s) => s.id));
@@ -581,6 +591,7 @@ export function createSea(scene, {
     stop,
     setPool,
     addBottle,
+    bringNext,
     setSpecial,
     hold,
     release,
