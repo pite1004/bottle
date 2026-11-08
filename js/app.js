@@ -14,6 +14,7 @@ import { checkMilestones, pendingSeaBottles, receive, listReceived, seaBottle } 
 import * as sound from './sound.js';
 import * as store from './store.js';
 import * as stats from './stats.js';
+import * as ga from './ga.js';
 
 const app = document.getElementById('app');
 const params = new URLSearchParams(location.search);
@@ -102,6 +103,7 @@ function route() {
     target = 'write';
   }
   for (const [key, el] of Object.entries(screens)) el.hidden = key !== target;
+  ga.pageView(target);
   $('demo-badge').hidden = store.mode !== 'demo' || target !== 'sea';
   if (target === 'soon') $('soon-title').textContent = SOON_TITLES[name];
   if (target === 'write') {

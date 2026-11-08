@@ -2,6 +2,7 @@
 // 익명 uid, 횟수, 시각, 기기 종류만 기록한다. 글귀 내용·IP·User-Agent·이름·연락처는 절대 기록하지 않는다.
 // 체험 모드에서는 기록하지 않고 콘솔에만 출력한다.
 import * as store from './store.js';
+import * as ga from './ga.js';
 
 const FLUSH_MS = 5000;            // 이 간격으로 모아서 한 번에 저장
 const SESSION_GAP = 30 * 60 * 1000; // 30분 넘게 지나서 다시 열면 새 방문
@@ -127,6 +128,7 @@ async function begin(source) {
 
 // 이벤트 하나. meta는 짧은 분류 문자열만 (글귀 내용 금지)
 export function track(type, meta) {
+  ga.event(type, meta);
   if (store.mode !== 'firebase') {
     console.debug('[통계·체험 모드]', type, meta ?? '');
     return;
