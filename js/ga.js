@@ -32,8 +32,11 @@ export function pageView(screen) {
   });
 }
 
+// GA가 스스로 쓰는 이름이라 직접 보내면 무시되는 이벤트는 이름을 바꾼다
+const RESERVED = { session_start: 'visit_start' };
+
 // 앱 통계(stats.js)의 이벤트를 그대로. meta는 짧은 분류 문자열뿐
 export function event(type, meta) {
   if (!enabled) return;
-  window.gtag('event', type, meta == null ? {} : { meta: String(meta).slice(0, 40) });
+  window.gtag('event', RESERVED[type] || type, meta == null ? {} : { meta: String(meta).slice(0, 40) });
 }
