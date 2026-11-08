@@ -42,6 +42,7 @@ export function createSea(scene, {
   const rodHook = rod.querySelector('.rod-hook');
 
   let W = 0, H = 0, horizon = 0, seaH = 0;
+  let wide = 1; // 폰(약 430px)보다 몇 배 넓은지. PC에서 병 수와 흐름 속도를 늘린다
   let butt = { x: 0, y: 0 };
   let tip = { x: 0, y: 0 };
   let pool = [];
@@ -63,6 +64,7 @@ export function createSea(scene, {
     H = r.height;
     horizon = H * HORIZON;
     seaH = H - horizon;
+    wide = Math.max(1, W / 430);
     rod.setAttribute('viewBox', `0 0 ${W} ${H}`);
     drawRod();
     drawCity();
@@ -70,7 +72,7 @@ export function createSea(scene, {
 
   function drawRod() {
     butt = { x: W + 14, y: H + 26 };
-    tip = { x: W * 0.64, y: horizon + seaH * 0.40 };
+    tip = { x: W - Math.min(W * 0.36, 360), y: horizon + seaH * 0.40 }; // PC에서도 낚싯대는 오른쪽 아래에
     const dx = tip.x - butt.x, dy = tip.y - butt.y;
     const len = Math.hypot(dx, dy);
     const nx = -dy / len, ny = dx / len; // 수직 방향
@@ -221,13 +223,13 @@ export function createSea(scene, {
 
   function targetCount() {
     if (pool.length === 0) return 2; // 비었을 땐 쓰레기만 가끔
-    return Math.min(TARGET_COUNT, pool.length + 2); // 병이 적을 땐 같은 병이 겹쳐 나오지 않게
+    return Math.min(Math.round(TARGET_COUNT * Math.min(wide, 2.5)), pool.length + 2); // 병이 적을 땐 같은 병이 겹쳐 나오지 않게
   }
 
   // 흐름 속도: 가까울수록 빠르게 + 병마다 약간 다르게
   function speedFor(z) {
     const k = (z - Z_MIN) / (Z_MAX - Z_MIN);
-    return (SPEED_FAR + (SPEED_NEAR - SPEED_FAR) * k) * (0.85 + Math.random() * 0.3);
+    return (SPEED_FAR + (SPEED_NEAR - SPEED_FAR) * k) * (0.85 + Math.random() * 0.3) * Math.sqrt(wide);
   }
 
   // 상류 쪽 화면 바깥 x

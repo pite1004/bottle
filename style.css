@@ -95,16 +95,7 @@ body {
   background: var(--sky-top);
 }
 
-/* 데스크톱: 가운데 폰 화면처럼 */
-@media (min-width: 520px) {
-  body { display: grid; place-items: center; }
-  #app {
-    width: 410px;
-    height: min(calc(100dvh - 48px), 880px);
-    border-radius: 28px;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
-  }
-}
+/* PC·태블릿에서도 화면 전체를 쓴다. 글과 버튼은 아래에서 가운데 폭으로 묶는다 */
 
 h1, h2, p { margin: 0; }
 
@@ -586,6 +577,8 @@ h1, h2, p { margin: 0; }
 }
 
 .bottom-idle {
+  max-width: 480px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -610,6 +603,7 @@ h1, h2, p { margin: 0; }
 }
 
 .bottom-fish[hidden] { display: none; }
+.bottom-fish > * { width: 100%; max-width: 480px; align-self: center; }
 
 .fish-title {
   text-align: center;
@@ -778,6 +772,7 @@ h1, h2, p { margin: 0; }
 .coach {
   position: absolute;
   z-index: 55;
+  width: max-content; /* 화면 오른쪽 끝에서도 좁게 접히지 않게 */
   max-width: 250px;
   padding: 10px 14px;
   border-radius: 14px;
@@ -977,8 +972,8 @@ h1, h2, p { margin: 0; }
 
 .story-text {
   position: absolute;
-  left: 24px;
-  right: 24px;
+  left: max(24px, calc(50% - 320px));
+  right: max(24px, calc(50% - 320px));
   top: 13%;
   display: flex;
   flex-direction: column;
@@ -1047,6 +1042,9 @@ h1, h2, p { margin: 0; }
 .screen-soon { background: #eef2f6; color: #1f2328; }
 
 .subbar {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1081,6 +1079,8 @@ h1, h2, p { margin: 0; }
   flex-direction: column;
   gap: 16px;
   padding: 4px 16px max(16px, env(safe-area-inset-bottom));
+  /* 넓은 화면에선 내용은 가운데 560px, 스크롤은 화면 전체에서 */
+  padding-inline: max(16px, calc(50% - 264px));
   overflow-y: auto;
 }
 
@@ -2165,29 +2165,29 @@ button.archive-item[data-journey] .badge { pointer-events: none; }
 
 /* 거리의 움직임: 버스·걷는 사람·새 */
 .dream-bus { animation: dream-bus 17s linear -6s infinite; }
-@keyframes dream-bus { from { transform: translateX(-130px); } to { transform: translateX(430px); } }
+@keyframes dream-bus { from { transform: translateX(-130px); } to { transform: translateX(calc(var(--town-w, 400px) + 30px)); } }
 
 .dream-walker.w1 { animation: dream-walk-r 34s linear -10s infinite; }
 .dream-walker.w2 { animation: dream-walk-l 40s linear -22s infinite; }
 .dream-walker.w3 { animation: dream-walk-r 46s linear -32s infinite; }
-@keyframes dream-walk-r { from { transform: translate(-20px, 696px); } to { transform: translate(420px, 696px); } }
-@keyframes dream-walk-l { from { transform: translate(420px, 692px); } to { transform: translate(-20px, 692px); } }
+@keyframes dream-walk-r { from { transform: translate(-20px, 696px); } to { transform: translate(calc(var(--town-w, 400px) + 20px), 696px); } }
+@keyframes dream-walk-l { from { transform: translate(calc(var(--town-w, 400px) + 20px), 692px); } to { transform: translate(-20px, 692px); } }
 .dream-step { animation: dream-step .55s ease-in-out infinite alternate; }
 @keyframes dream-step { from { transform: translateY(0); } to { transform: translateY(-1.2px); } }
 
 .dream-bird.b1 { animation: dream-fly 26s linear -4s infinite; }
 .dream-bird.b2 { animation: dream-fly2 32s linear -14s infinite; }
 .dream-bird.b3 { animation: dream-fly 29s linear -20s infinite; }
-@keyframes dream-fly { from { transform: translate(-20px, 150px); } 50% { transform: translate(200px, 120px); } to { transform: translate(420px, 140px); } }
-@keyframes dream-fly2 { from { transform: translate(-20px, 196px); } 50% { transform: translate(200px, 214px); } to { transform: translate(420px, 180px); } }
+@keyframes dream-fly { from { transform: translate(-20px, 150px); } 50% { transform: translate(calc(var(--town-w, 400px) / 2), 120px); } to { transform: translate(calc(var(--town-w, 400px) + 20px), 140px); } }
+@keyframes dream-fly2 { from { transform: translate(-20px, 196px); } 50% { transform: translate(calc(var(--town-w, 400px) / 2), 214px); } to { transform: translate(calc(var(--town-w, 400px) + 20px), 180px); } }
 .dream-wing { transform-box: fill-box; transform-origin: center; animation: dream-flap .5s ease-in-out infinite alternate; }
 @keyframes dream-flap { from { transform: scaleY(1); } to { transform: scaleY(-.4); } }
 
 /* 문장 (손글씨, 흰 글씨 + 은은한 그림자) */
 .dream-text {
   position: absolute;
-  left: 24px;
-  right: 24px;
+  left: max(24px, calc(50% - 320px));
+  right: max(24px, calc(50% - 320px));
   top: 14%;
   text-align: center;
   pointer-events: none;

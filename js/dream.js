@@ -53,7 +53,6 @@ export function createDream({ app, onSleep = () => {}, onWake = () => {}, onComp
   const rod = app.querySelector('.rod');
   const scene = $('scene');
 
-  drawTown($('dream-town'));
 
   let state = 'idle'; // idle | sleep | past | rise | wake | zoom | after
   let index = -1;
@@ -118,6 +117,7 @@ export function createDream({ app, onSleep = () => {}, onWake = () => {}, onComp
     reset();
     state = 'sleep';
     root.hidden = false;
+    drawTown($('dream-town'), root.clientWidth / Math.max(1, root.clientHeight));
     app.classList.add('dream-on');
     skipBtn.focus({ preventScroll: true });
     sound.dreamScene('sleep');
@@ -305,8 +305,10 @@ export function createDream({ app, onSleep = () => {}, onWake = () => {}, onComp
 }
 
 // 꿈속 2026년의 거리: 창문 있는 건물·아파트, 가로수, 버스 정류장, 지나가는 버스, 걷는 사람, 나는 새
-// viewBox 0 0 400 700, 수평선(42%)은 y = 294. 뒤쪽 건물 꼭대기 몇 개는 수평선 위로 나와서 밤바다에선 "잠긴 도시"로 보인다
-function drawTown(svg) {
+// 높이 700 기준, 폭은 화면 비율에 맞춰 (폰 400, PC는 더 넓게). 수평선(42%)은 y = 294.
+// 뒤쪽 건물 꼭대기 몇 개는 수평선 위로 나와서 밤바다에선 "잠긴 도시"로 보인다
+function drawTown(svg, aspect) {
+  const W = Math.max(400, Math.round(700 * aspect));
   let s = 2026;
   const rnd = () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
   let out = '';
@@ -323,7 +325,7 @@ function drawTown(svg) {
 
   // 뒤쪽 건물 (흐릿하게, 꼭대기가 높다)
   let x = -10;
-  while (x < 410) {
+  while (x < W + 10) {
     const w = 28 + rnd() * 26;
     const top = 236 + rnd() * 96;
     out += `<rect x="${x.toFixed(1)}" y="${top.toFixed(1)}" width="${w.toFixed(1)}" height="${(590 - top).toFixed(1)}" fill="${rnd() > 0.5 ? '#d9b8a0' : '#cfae98'}"/>`;
@@ -334,7 +336,7 @@ function drawTown(svg) {
 
   // 앞쪽 아파트
   x = -6;
-  while (x < 410) {
+  while (x < W + 10) {
     const w = 52 + rnd() * 30;
     const top = 350 + rnd() * 80;
     const color = ['#c48b6c', '#b97f66', '#d39a76', '#a9806f'][Math.floor(rnd() * 4)];
@@ -345,8 +347,8 @@ function drawTown(svg) {
   }
 
   // 건너편 인도와 가로수
-  out += '<rect x="-20" y="588" width="440" height="16" fill="#dcc6aa"/>';
-  for (let tx = 14; tx < 410; tx += 56 + rnd() * 14) {
+  out += `<rect x="-20" y="588" width="${W + 40}" height="16" fill="#dcc6aa"/>`;
+  for (let tx = 14; tx < W + 10; tx += 56 + rnd() * 14) {
     const r = 13 + rnd() * 5;
     out += `<rect x="${(tx - 1.6).toFixed(1)}" y="${(592 - r).toFixed(1)}" width="3.2" height="${(r + 8).toFixed(1)}" fill="#6b4f3c"/>`;
     out += `<circle cx="${tx.toFixed(1)}" cy="${(586 - r).toFixed(1)}" r="${r.toFixed(1)}" fill="${rnd() > 0.5 ? '#7aa063' : '#6b9356'}"/>`;
@@ -354,8 +356,8 @@ function drawTown(svg) {
   }
 
   // 도로
-  out += '<rect x="-20" y="604" width="440" height="50" fill="#77716f"/>';
-  for (let dx = -10; dx < 410; dx += 34) out += `<rect x="${dx}" y="627" width="18" height="3" fill="#efe6d6"/>`;
+  out += `<rect x="-20" y="604" width="${W + 40}" height="50" fill="#77716f"/>`;
+  for (let dx = -10; dx < W + 10; dx += 34) out += `<rect x="${dx}" y="627" width="18" height="3" fill="#efe6d6"/>`;
 
   // 버스 (왼쪽에서 오른쪽으로 천천히)
   out += `<g class="dream-bus"><g transform="translate(0 600)">
@@ -367,8 +369,8 @@ function drawTown(svg) {
   </g></g>`;
 
   // 이쪽 인도 + 버스 정류장
-  out += '<rect x="-20" y="654" width="440" height="50" fill="#e6d4bb"/>';
-  out += `<g>
+  out += `<rect x="-20" y="654" width="${W + 40}" height="50" fill="#e6d4bb"/>`;
+  out += `<g transform="translate(${W - 400} 0)">
     <rect x="268" y="650" width="62" height="34" fill="#a8cbd5" opacity=".75"/>
     <rect x="262" y="643" width="74" height="7" rx="2" fill="#4f6d7a"/>
     <rect x="265" y="650" width="3" height="42" fill="#4f6d7a"/><rect x="330" y="650" width="3" height="42" fill="#4f6d7a"/>
@@ -389,6 +391,7 @@ function drawTown(svg) {
   const bird = (cls) => `<g class="dream-bird ${cls}"><path class="dream-wing" d="M-7 0 Q-3.5 -5 0 0 Q3.5 -5 7 0" fill="none" stroke="#6a5552" stroke-width="1.5" stroke-linecap="round"/></g>`;
   out += bird('b1') + bird('b2') + bird('b3');
 
-  svg.setAttribute('viewBox', '0 0 400 700');
+  svg.setAttribute('viewBox', `0 0 ${W} 700`);
+  svg.style.setProperty('--town-w', `${W}px`); // 버스·사람·새가 지나가는 거리
   svg.innerHTML = out;
 }
