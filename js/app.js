@@ -153,10 +153,10 @@ function route() {
 // 이미 떠 있으면 그게 사라진 뒤 차례로 보여 준다
 const noticeQueue = [];
 
-function showNotice(text) {
+function showNotice(text, ms = 3000) {
   const notice = $('sea-notice');
   if (!notice.hidden) {
-    noticeQueue.push(text);
+    noticeQueue.push([text, ms]);
     return;
   }
   notice.textContent = text;
@@ -167,12 +167,12 @@ function showNotice(text) {
   seaNoticeTimer = setTimeout(() => {
     notice.hidden = true;
     setTimeout(nextNotice, 300);
-  }, 3000);
+  }, ms);
 }
 
 // 다른 화면에 있으면 바다로 돌아올 때까지 기다린다
 function nextNotice() {
-  if (noticeQueue.length && !screens.sea.hidden) showNotice(noticeQueue.shift());
+  if (noticeQueue.length && !screens.sea.hidden) showNotice(...noticeQueue.shift());
 }
 
 // ---------- 바다 · 낚시 ----------
@@ -245,6 +245,7 @@ const sea = createSea($('scene'), {
       store.catchBottle(f.data).catch((err) => console.error(err));
       stats.track('catch_letter');
       queueCoach('caught');
+      dreamNudge = true;
       showLetter(f.data);
       location.hash = 'letter';
       seaPool = seaPool.filter((b) => b.id !== f.data.id);
@@ -252,6 +253,7 @@ const sea = createSea($('scene'), {
       checkSeaGifts();
     } else {
       queueCoach('trash');
+      dreamNudge = true;
       showFound(f.data.trash, store.addTrash(f.data.trash));
       stats.track('catch_trash', f.data.trash);
       location.hash = 'found';
@@ -682,6 +684,7 @@ async function launch(chosenLook) {
   renderSent(bottle);
   sound.dip();
   queueCoach('sent');
+  dreamNudge = true;
   location.replace('#sent');
 }
 
@@ -1161,7 +1164,8 @@ function queueCoach(key) {
 
 // 인트로가 끝난 뒤, 바다 화면에서, 낚시 중이 아닐 때만. 동시에 하나만.
 function canCoach() {
-  return !screens.sea.hidden && !story.playing && !dream.playing && !sea.busy && !coach.visible;
+  return !screens.sea.hidden && !story.playing && !dream.playing && !sea.busy && !coach.visible
+    && $('sea-notice').hidden && !noticeQueue.length; // 상단 안내와 겹치지 않게 안내가 끝난 뒤에
 }
 
 function tryCoach() {
@@ -1178,6 +1182,7 @@ function tryCoach() {
 function enterSea() {
   lastActivity = Date.now();
   if ($('sea-notice').hidden) nextNotice();
+  showDreamProgress();
   if (pendingFly) {
     const fly = pendingFly;
     pendingFly = null;
@@ -1232,6 +1237,26 @@ function checkDream() {
     stats.track('dream_unlocked');
   }
   revealDream();
+}
+
+// 편지를 건지거나 쓰레기를 건지거나 병을 띄우고 바다로 돌아오면, 아직 꿈꾸기가 안 열렸을 때 남은 조건을 도전과제처럼 알려 준다
+let dreamNudge = false;
+
+function dreamProgressText() {
+  const letter = store.listCaught().length >= 1;
+  const sent = launchedCount() >= 1;
+  if (letter && sent) return null;
+  if (letter) return '꿈꾸기 도전 1/2 · 내 병을 1개 띄우면 꿈을 꿀 수 있어요';
+  if (sent) return '꿈꾸기 도전 1/2 · 편지를 1통 건지면 꿈을 꿀 수 있어요';
+  return '꿈꾸기 도전 0/2 · 편지 1통을 건지고 내 병 1개를 띄우면 꿈을 꿀 수 있어요';
+}
+
+function showDreamProgress() {
+  if (!dreamNudge) return;
+  dreamNudge = false;
+  if (store.load('bottle.dream.unlocked', false)) return;
+  const text = dreamProgressText();
+  if (text) showNotice(text, 4500);
 }
 
 // 처음 해금되면 바다 화면에서 버튼이 페이드인 + 상단 안내. 낚시 중이거나 다른 화면이면 바다로 돌아올 때까지 미룬다
