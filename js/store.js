@@ -202,19 +202,45 @@ export async function listSeaBottles() {
   return list.filter(canFloat);
 }
 
-// 앱을 연 뒤에 새로 띄워진 병을 실시간으로 받는다. 새 병만 듣기 때문에 읽기는 새 병 수만큼만 든다.
-// 체험 모드는 이 기기뿐이라 듣지 않는다.
+// 앱을 연 뒤에 새로 띄워진 병을 1분마다 확인해서 받는다.
+// 실시간 구독(onSnapshot)은 새 병이 건져질 때마다 접속한 모든 사람에게 읽기가 생겨서 무료 한도를 빨리 써 버렸다.
+// 이 방식은 확인 1번에 (새 병 수, 없으면 1)만큼만 읽는다. 화면을 안 보고 있을 땐 쉰다.
+// 체험 모드는 이 기기뿐이라 확인하지 않는다.
+const POLL_MS = 60 * 1000;
+
 export function watchNewBottles({ onAdd, onRemove }) {
   if (!fb) return;
-  const { collection, query, where, orderBy, onSnapshot, Timestamp } = fb.fs;
-  const fresh = query(collection(fb.db, 'bottles'), where('createdAt', '>', Timestamp.fromMillis(newestSeen)), orderBy('createdAt'));
-  onSnapshot(fresh, (snap) => {
-    for (const change of snap.docChanges()) {
-      const b = fromDoc(change.doc);
-      if (change.type === 'removed' || b.hidden) onRemove(b.id);
-      else if (change.type === 'added' && canFloat(b)) onAdd(b);
+  const { collection, query, where, orderBy, limit, getDocs, Timestamp } = fb.fs;
+  let busy = false;
+  const check = async () => {
+    if (busy || document.hidden) return;
+    busy = true;
+    try {
+      const fresh = query(collection(fb.db, 'bottles'),
+        where('createdAt', '>', Timestamp.fromMillis(newestSeen)), orderBy('createdAt'), limit(30));
+      const snap = await getDocs(fresh);
+      for (const d of snap.docs) {
+        const b = fromDoc(d);
+        newestSeen = Math.max(newestSeen, b.createdAt);
+        if (b.hidden) onRemove(b.id);
+        else if (canFloat(b)) onAdd(b);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      busy = false;
     }
-  }, (err) => console.error(err));
+  };
+  setInterval(check, POLL_MS);
+}
+
+// 저장 실패 이유를 짧게 나눈다 (화면 문구용)
+export function failReason(err) {
+  const code = err && err.code ? String(err.code).replace('firestore/', '').replace('auth/', '') : '';
+  if (code === 'resource-exhausted' || code === 'quota-exceeded') return 'busy';
+  if (code === 'unavailable' || code === 'network-request-failed' || code === 'deadline-exceeded'
+    || (typeof navigator !== 'undefined' && navigator.onLine === false)) return 'offline';
+  return 'other';
 }
 
 // 친구가 보낸 링크(?b=병ID)의 병 하나. 바다에 띄울 수 있는 병일 때만 (숨김·내 병·이미 건진 병이면 null)

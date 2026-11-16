@@ -333,7 +333,9 @@ async function loadSea() {
     });
   } catch (err) {
     console.error(err);
-    toast('바다에 연결하지 못했어요. 잠시 뒤 다시 열어 주세요');
+    toast(store.failReason(err) === 'busy'
+      ? '오늘 바다가 너무 붐벼서 잠시 쉬고 있어요. 오후 5시 이후에 다시 와 주세요'
+      : '바다에 연결하지 못했어요. 잠시 뒤 다시 열어 주세요', 5000);
   }
 }
 
@@ -665,7 +667,12 @@ async function launch(chosenLook) {
       stats.track('write_limit_reached');
       location.hash = 'full';
     } else {
-      toast('병을 띄우지 못했어요. 잠시 뒤 다시 해 주세요');
+      const why = store.failReason(err);
+      toast(why === 'busy'
+        ? '오늘 바다가 너무 붐벼서 잠시 쉬고 있어요. 오후 5시 이후에 다시 띄워 주세요'
+        : why === 'offline'
+          ? '인터넷 연결이 불안정해요. 연결을 확인하고 다시 띄워 주세요'
+          : '병을 띄우지 못했어요. 잠시 뒤 다시 해 주세요', 5000);
     }
     return;
   } finally {
