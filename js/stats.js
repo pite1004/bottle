@@ -4,7 +4,7 @@
 import * as store from './store.js';
 import * as ga from './ga.js';
 
-const FLUSH_MS = 5000;            // 이 간격으로 모아서 한 번에 저장
+const FLUSH_MS = 20000;           // 이 간격으로 모아서 한 번에 저장 (모을 때마다 방문자 문서도 1번 쓰므로 너무 자주 쓰지 않게)
 const SESSION_GAP = 30 * 60 * 1000; // 30분 넘게 지나서 다시 열면 새 방문
 const MAX_PER_BATCH = 400;        // 배치 한 번에 최대 500개 쓰기 (방문자 갱신 1개 포함 여유)
 
@@ -23,6 +23,12 @@ const COUNTER_FOR = {
   dream_unlocked: 'dreamUnlocks',
   dream_complete: 'dreamCompletes',
 };
+
+// GA에만 보내고 Firestore에는 쓰지 않는 이벤트 (많이 생기는데 통계 페이지에 안 쓰여서 쓰기 한도만 차지)
+const GA_ONLY = new Set(['hooked']);
+
+// 띄우기 실패는 쓰기 한도가 바닥났을 때 생기기 쉬워서, 저장에 실패하면 이 기기에 남겨 뒀다가 다음에 다시 보낸다
+const PENDING_KEY = 'bottle.pendingFails';
 
 // 처음 만들 때 0으로 넣는 누계 (꿈꾸기 누계는 생길 때 increment로만 쓴다)
 const COUNTERS = ['introCompletes', 'castCount', 'lettersCaught', 'trashCaught', 'seaBottles',
@@ -84,6 +90,9 @@ const { device } = deviceInfo();
 // 앱을 열 때 한 번. 방문자 문서를 만들거나 갱신하고, 새 방문이면 session_start
 export function start() {
   const source = readSource();
+  // 지난번에 저장하지 못한 띄우기 실패 기록 (날짜·시각은 실패했던 때 그대로)
+  const pending = store.load(PENDING_KEY, []);
+  if (Array.isArray(pending)) queue.push(...pending.filter((e) => e && e.type === 'launch_failed').slice(-20));
   ready = begin(source).catch((err) => {
     console.warn('통계를 시작하지 못했어요', err);
     return false;
@@ -133,6 +142,7 @@ export function track(type, meta) {
     console.debug('[통계·체험 모드]', type, meta ?? '');
     return;
   }
+  if (GA_ONLY.has(type)) return;
   const { date, hour } = kst();
   queue.push({ type, meta: meta == null ? null : String(meta).slice(0, 40), date, hour });
   const counter = COUNTER_FOR[type];
@@ -151,6 +161,8 @@ async function flush() {
     const { fb, vref } = fbRef;
     const { doc, collection, writeBatch, serverTimestamp, increment } = fb.fs;
     const items = queue.splice(0, MAX_PER_BATCH);
+    const fails = items.filter((e) => e.type === 'launch_failed');
+    if (fails.length) store.save(PENDING_KEY, fails.slice(-20));
     const counts = bumps;
     bumps = {};
     const batch = writeBatch(fb.db);
@@ -170,8 +182,9 @@ async function flush() {
     const inc = Object.fromEntries(Object.entries(counts).map(([k, n]) => [k, increment(n)]));
     batch.set(vref, { lastSeen: serverTimestamp(), ...inc }, { merge: true });
     await batch.commit();
+    if (items.some((e) => e.type === 'launch_failed')) store.save(PENDING_KEY, []);
   } catch (err) {
-    // 통계 저장이 실패해도 서비스는 그대로 (다시 쌓이지 않게 버린다)
+    // 통계 저장이 실패해도 서비스는 그대로 (다시 쌓이지 않게 버린다). 띄우기 실패 기록만 남겨 뒀다가 다음에 보낸다
     console.warn('통계를 저장하지 못했어요', err);
   } finally {
     flushing = false;

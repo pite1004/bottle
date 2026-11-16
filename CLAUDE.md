@@ -484,13 +484,13 @@ typeDate: 'catch_letter_2026-11-04', typeHour: 'catch_letter_21'   — 인덱스
 ```
 
 * 방문: `session_start`(새 방문일 때), `intro_start`, `intro_complete`, `intro_skip`
-* 낚시: `cast`, `hooked`, `pull_release`(놓아주기), `catch_letter`, `catch_trash`(meta=종류), `catch_sea_bottle`(meta=단계)
+* 낚시: `cast`, `hooked`(GA에만, Firestore 쓰기 한도 절약), `pull_release`(놓아주기), `catch_letter`, `catch_trash`(meta=종류), `catch_sea_bottle`(meta=단계)
 * 편지: `letter_star`, `letter_report`, `letter_return`
-* 쓰기: `write_start`, `write_blocked`(meta=이유 분류), `decorate_open`, `bottle_launch`(meta=`plain`|`custom`), `write_limit_reached`(10개 다 쓴 뒤 띄우기 시도)
+* 쓰기: `write_start`, `write_blocked`(meta=이유 분류), `decorate_open`, `bottle_launch`(meta=`plain`|`custom`), `write_limit_reached`(10개 다 쓴 뒤 띄우기 시도), `launch_failed`(meta=`busy`|`offline`|`other` + `:오류 코드`, 저장에 실패하면 이 기기에 남겨 뒀다가 다음 방문 때 다시 보냄)
 * 공유: `share_card`, `save_image` (meta=`letter`|`journey`|`record`)
 * 탐색: `archive_open`, `shelf_open`, `journey_open`, `record_open`, `replay_intro`
 * 꿈꾸기: `dream_unlocked`, `dream_start`, `dream_complete`, `dream_skip`(meta=문장 번호)
-* 큐에 모았다가 `writeBatch`로 묶어서 저장 (5초마다 + 화면을 벗어날 때 visibilitychange)
+* 큐에 모았다가 `writeBatch`로 묶어서 저장 (20초마다 + 화면을 벗어날 때 visibilitychange). 묶을 때마다 방문자 문서도 1번 쓰므로 너무 자주 쓰지 않는다 (무료 한도 하루 쓰기 2만)
 
 ### 통계 페이지 `stats.html` (사이트 어디에도 링크 걸지 않음, 주소로만)
 
@@ -500,6 +500,7 @@ typeDate: 'catch_letter_2026-11-04', typeHour: 'catch_letter_21'   — 인덱스
 * 최근 14일 날짜별 그래프(막대): 방문, 던짐, 건진 편지, 건져낸 쓰레기, 띄운 병, 공유 + 표로 보기 / 인트로 시작·버튼 누름·건너뛰기 선 그래프 / 시간대별(0~23시) 건진 편지 막대. 그래프는 `js/charts.js`(외부 라이브러리 없이 SVG), 값은 마우스를 올리거나 탭하면 표시
 * 유입 경로 비율, 기기(모바일/PC, iOS/안드로이드) 비율
 * 검열 차단 이유별 횟수, 신고 횟수, 숨김 병 수
+* 병 띄우기 실패: 이유별 횟수(붐빔·인터넷·그 밖) + 최근 10건(날짜·시각·이유:오류 코드·기기)
 * 병 1개당 평균 도달 인원, 가장 많이 닿은 병의 도달 수(글귀는 표시하지 않음)
 * 바다가 보낸 병 단계별 발견 인원
 * `CSV로 내려받기`(날짜별 표), `새로고침`, 마지막 갱신 시각. 발표 화면용 큰 글씨

@@ -85,6 +85,7 @@
     .chart-tip i { width: 12px; height: 2px; border-radius: 1px; }
     .chart-tip b { font-weight: 700; font-variant-numeric: tabular-nums; }
     details { margin-top: 14px; }
+    .fail-list { margin: 0; padding-left: 18px; color: var(--sub); font-size: 14px; line-height: 1.7; font-variant-numeric: tabular-nums; }
     summary { min-height: 44px; display: flex; align-items: center; color: var(--sub); cursor: pointer; }
     table { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
     th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: right; }
@@ -152,6 +153,12 @@
       <div>
         <h2>안전 · 검열</h2>
         <div class="card"><div class="bars" id="safety"></div></div>
+        <h2>병 띄우기 실패</h2>
+        <div class="card">
+          <div class="bars" id="fails"></div>
+          <p class="tile-title" style="margin-top:14px">최근 기록 (날짜 · 시각 · 이유:오류 코드 · 기기)</p>
+          <ul class="fail-list" id="fails-recent"></ul>
+        </div>
       </div>
       <div>
         <h2>병이 닿은 정도 · 바다가 보낸 병</h2>

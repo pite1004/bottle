@@ -159,7 +159,7 @@ service cloud.firestore {
             'session_start','intro_start','intro_complete','intro_skip',
             'cast','hooked','pull_release','catch_letter','catch_trash','catch_sea_bottle',
             'letter_star','letter_report','letter_return',
-            'write_start','write_blocked','decorate_open','bottle_launch','write_limit_reached','launch_cooldown',
+            'write_start','write_blocked','decorate_open','bottle_launch','write_limit_reached','launch_cooldown','launch_failed',
             'share_card','save_image',
             'archive_open','shelf_open','journey_open','record_open','replay_intro',
             'dream_unlocked','dream_start','dream_complete','dream_skip']

@@ -206,6 +206,18 @@ async function load() {
       { label: '숨김 처리된 병', value: hidden, note: '개' },
     ]);
 
+    // 띄우기 실패 (이유:오류 코드). 몇 건 안 되니 문서를 직접 읽어 묶는다
+    const failSnap = await fs.getDocs(fs.query(col('events'), fs.where('type', '==', 'launch_failed'), fs.limit(500)));
+    const fails = failSnap.docs.map((d) => d.data());
+    const FAIL_LABEL = { busy: '붐빔 (무료 한도 초과)', offline: '인터넷 연결', other: '그 밖' };
+    const byWhy = { busy: 0, offline: 0, other: 0 };
+    for (const f of fails) byWhy[(f.meta || 'other').split(':')[0] in byWhy ? (f.meta || 'other').split(':')[0] : 'other'] += 1;
+    bars($('fails'), Object.keys(byWhy).map((k) => ({ label: `실패: ${FAIL_LABEL[k]}`, value: byWhy[k], note: '회' })));
+    const recent = fails.filter((f) => f.at).sort((a, b) => b.at.toMillis() - a.at.toMillis()).slice(0, 10);
+    $('fails-recent').innerHTML = recent.length
+      ? recent.map((f) => `<li>${f.date.slice(5).replace('-', '.')} ${f.hour}시 · ${(f.meta || '').replace(/[<>&]/g, '')} · ${f.device === 'mobile' ? '모바일' : 'PC'}</li>`).join('')
+      : '<li>아직 실패 기록이 없어요</li>';
+
     // 도달 · 바다가 보낸 병
     const top = await fs.getDocs(fs.query(col('bottles'), fs.orderBy('catches', 'desc'), fs.limit(1)));
     const best = top.empty ? 0 : top.docs[0].data().catches || 0; // 글귀는 읽기만 하고 표시하지 않는다

@@ -668,6 +668,9 @@ async function launch(chosenLook) {
       location.hash = 'full';
     } else {
       const why = store.failReason(err);
+      // 통계: 이유와 오류 코드만 (글귀는 보내지 않는다)
+      const code = err && err.code ? String(err.code).replace(/^(firestore|auth)\//, '') : (err && err.name) || 'unknown';
+      stats.track('launch_failed', `${why}:${code}`.slice(0, 40));
       toast(why === 'busy'
         ? '오늘 바다가 너무 붐벼서 잠시 쉬고 있어요. 오후 5시 이후에 다시 띄워 주세요'
         : why === 'offline'
