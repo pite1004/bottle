@@ -5,6 +5,10 @@ export const GLASS = {
   green: '#cfe8c6',
   sky: '#cfe3f3',
   amber: '#ecd3a8',
+  pink: '#f4d1dc',
+  violet: '#dcd3f1',
+  coral: '#f7cdb8',
+  navy: '#b7c3e0',
 };
 
 const CORK = {
@@ -12,6 +16,7 @@ const CORK = {
   wax: '#b5523b',
   ribbon: '#5b8fc7',
   seaglass: '#8fd0c8',
+  charm: '#c23b2e', // 합격 부적의 붉은 실·글씨
 };
 
 const GLASS_EDGE = '#8a98a5';
@@ -29,12 +34,17 @@ export const OPTIONS = {
     { value: 'green', label: '연두' },
     { value: 'sky', label: '하늘' },
     { value: 'amber', label: '호박색' },
+    { value: 'pink', label: '분홍' },
+    { value: 'violet', label: '라벤더' },
+    { value: 'coral', label: '노을빛' },
+    { value: 'navy', label: '밤바다' },
   ],
   cork: [
     { value: 'cork', label: '코르크' },
     { value: 'wax', label: '왁스 봉인' },
     { value: 'ribbon', label: '리본' },
     { value: 'seaglass', label: '바다유리 장식', locked: true },
+    { value: 'charm', label: '합격 부적' },
   ],
   inside: [
     { value: 'none', label: '없음' },
@@ -154,6 +164,24 @@ function corkSVG(kind, s) {
       <rect x="${l - 0.5}" y="${by}" width="${w + 1}" height="4" fill="${c}"/>
       <path d="M${r} ${by + 2} q6 -6 9 -1 q-3 4 -9 1 z M${r} ${by + 2} q7 3 6 7 q-5 0 -6 -7 z" fill="${c}"/>
       <path d="M${r} ${by + 2} l3 10 M${r} ${by + 2} l7 8" stroke="${c}" stroke-width="1.6" stroke-linecap="round"/>
+    </g>`;
+  }
+  if (kind === 'charm') {
+    // 코르크 + 목에 감은 붉은 실 + 옆에 매달린 노란 부적(세로로 "합격")
+    const ty = m + 9;
+    const tx = r + 2;
+    return `<g>
+      <rect x="${l - 1}" y="${m - 9}" width="${w + 2}" height="12" rx="2" fill="${CORK.cork}"/>
+      <rect x="${l - 0.5}" y="${m + 4}" width="${w + 1}" height="2.4" fill="${c}"/>
+      <path d="M${r} ${m + 5.2} Q${tx + 4} ${m + 5} ${tx + 6} ${ty}" fill="none" stroke="${c}" stroke-width="1.2" stroke-linecap="round"/>
+      <g transform="rotate(6 ${tx + 6} ${ty})">
+        <rect x="${tx}" y="${ty}" width="12" height="21" rx="1" fill="#f3d36b" stroke="${c}" stroke-width="1"/>
+        <rect x="${tx + 1.6}" y="${ty + 1.6}" width="8.8" height="17.8" fill="none" stroke="${c}" stroke-width=".6"/>
+        <text x="${tx + 6}" y="${ty + 9.2}" text-anchor="middle" font-size="6.4" font-weight="700" fill="${c}"
+          font-family="'Noto Sans KR', sans-serif">합</text>
+        <text x="${tx + 6}" y="${ty + 16.6}" text-anchor="middle" font-size="6.4" font-weight="700" fill="${c}"
+          font-family="'Noto Sans KR', sans-serif">격</text>
+      </g>
     </g>`;
   }
   if (kind === 'seaglass') {
