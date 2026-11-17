@@ -19,7 +19,7 @@ Claude Code는 작업을 시작할 때마다 이 파일을 먼저 읽는다. 아
   * Firestore: 병 데이터 저장. 위치는 `asia-northeast3`(서울) 권장
 * Vercel: GitHub 저장소 `bottle`을 연결해 push할 때마다 자동 배포. 정적 사이트라 Framework Preset은 `Other`, 빌드 명령 없음
 * 애니메이션: CSS + `requestAnimationFrame` + Web Animations API (외부 애니메이션 라이브러리 없이)
-* 폰트: Google Fonts — UI `Noto Sans KR`, 글귀용 `Nanum Pen Script`(손글씨) · `Gaegu`(둥근 손글씨) · `Nanum Gothic Coding`(타자기)
+* 폰트: Google Fonts — UI `Noto Sans KR`, 글귀용 `Nanum Pen Script`(손글씨) · `Gaegu`(둥근 손글씨) · `Nanum Gothic Coding`(타자기) · `Gowun Dodum`(또박또박: 둥글면서 정자체)
 
 ### 비밀 정보 원칙
 
@@ -33,7 +33,7 @@ Claude Code는 작업을 시작할 때마다 이 파일을 먼저 읽는다. 아
 1. 1인칭 바다: 병들이 수평선에서 작게 생겨 천천히 다가오며 출렁임
 2. 낚시: 병 탭 → 낚싯줄이 포물선으로 날아감 → "걸렸어요!" → 꾹 누르는 동안 병이 끌려옴 → 다 끌면 편지 열림
 3. 편지 보기: 보낸 사람이 꾸민 병 + 글귀 + 떠다닌 일수, 카드 이미지 저장, 신고
-4. 글귀 쓰기(최대 100자, 글씨체 3종) → 병 꾸미기 → 띄우기
+4. 글귀 쓰기(최대 100자, 글씨체 4종) → 병 꾸미기 → 띄우기
 5. 실제로 공유되는 바다(Firestore) + 익명 로그인
 6. 보관함: 건진 편지 / 띄운 병(몇 명이 건졌는지) / 수집품
 7. 떠다니는 쓰레기: 가끔 걸림 → 모으면 꾸미기 재료 해금
@@ -143,7 +143,7 @@ Google·이메일 로그인, 알림 메일, AI 검열, 서버 함수, 관리자 
 
 * 라벨 `누구에게든, 아무에게도 아닌 한 줄`, textarea 최대 100자, 글자 수 표시
 * placeholder `전하지 못한 말, 오늘의 마음, 2100년의 누군가에게…`
-* 글씨체 선택 3개(손글씨 / 둥근 손글씨 / 타자기) — textarea 글꼴에 즉시 반영
+* 글씨체 선택 4개(손글씨 / 둥근 손글씨 / 타자기 / 또박또박, 2열) — textarea 글꼴에 즉시 반영
 * 안내 `실명, 연락처, SNS 아이디는 쓸 수 없어요. 자동 검토를 거친 뒤 바다에 떠요.`
 * `병에 담기` → 검열 통과 시 06, 실패 시 이유를 부드럽게 표시
 
@@ -301,7 +301,7 @@ Google·이메일 로그인, 알림 메일, AI 검열, 서버 함수, 관리자 
 
 ```
 text: string (1~100자)
-font: 'pen' | 'round' | 'mono'
+font: 'pen' | 'round' | 'mono' | 'neat'
 shape: 'wine' | 'vial' | 'milk' | 'jam'
 color: 'clear' | 'green' | 'sky' | 'amber' | 'pink' | 'violet' | 'coral' | 'navy'
 cork: 'cork' | 'wax' | 'ribbon' | 'seaglass' | 'charm'

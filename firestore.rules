@@ -14,7 +14,7 @@ service cloud.firestore {
         && request.resource.data.text is string
         && request.resource.data.text.size() > 0
         && request.resource.data.text.size() <= 100
-        && request.resource.data.font in ['pen','round','mono']
+        && request.resource.data.font in ['pen','round','mono','neat']
         && request.resource.data.shape in ['wine','vial','milk','jam']
         && request.resource.data.color in ['clear','green','sky','amber','pink','violet','coral','navy']
         && request.resource.data.cork in ['cork','wax','ribbon','seaglass','charm']

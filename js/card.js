@@ -15,6 +15,7 @@ const FONT = {
   pen: { family: 'Nanum Pen Script', size: 96, line: 1.3 },
   round: { family: 'Gaegu', size: 74, line: 1.45 },
   mono: { family: 'Nanum Gothic Coding', size: 56, line: 1.6 },
+  neat: { family: 'Gowun Dodum', size: 64, line: 1.55 },
 };
 
 function loadImage(src) {

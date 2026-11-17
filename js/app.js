@@ -539,7 +539,7 @@ function showFound(kind, { total, unlocked }) {
 const savedDraft = store.load('bottle.draft', {});
 const draft = {
   text: typeof savedDraft.text === 'string' ? savedDraft.text : '',
-  font: ['pen', 'round', 'mono'].includes(savedDraft.font) ? savedDraft.font : 'pen',
+  font: ['pen', 'round', 'mono', 'neat'].includes(savedDraft.font) ? savedDraft.font : 'pen',
   ...DEFAULT_LOOK,
 };
 
