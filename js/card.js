@@ -15,8 +15,26 @@ const FONT = {
   pen: { family: 'Nanum Pen Script', size: 96, line: 1.3 },
   round: { family: 'Gaegu', size: 74, line: 1.45 },
   mono: { family: 'Nanum Gothic Coding', size: 56, line: 1.6 },
-  neat: { family: 'Gowun Dodum', size: 64, line: 1.55 },
+  neat: { family: 'Gowun Dodum', size: 64, line: 1.55, weight: 700 }, // 글꼴에 굵은 체가 없어 브라우저가 굵게 만든다
 };
+
+// 글귀 글꼴 문자열 (굵기가 정해진 글씨체는 굵게)
+function fontOf(f, size) {
+  return `${f.weight ? `${f.weight} ` : ''}${size}px "${f.family}"`;
+}
+
+// 글귀 한 줄. 굵게 정한 글씨체는 canvas가 굵게 만들어 주지 않아서 같은 색 테두리를 둘러 굵게 보이게 한다
+function textLine(ctx, f, size, text, x, y) {
+  if (f.weight) {
+    ctx.save();
+    ctx.strokeStyle = ctx.fillStyle;
+    ctx.lineWidth = size * 0.05;
+    ctx.lineJoin = 'round';
+    ctx.strokeText(text, x, y);
+    ctx.restore();
+  }
+  ctx.fillText(text, x, y);
+}
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -60,7 +78,7 @@ function fitText(ctx, text, f, maxWidth, maxHeight, pad) {
   let fit = null;
   for (let k = 1; k >= 0.5; k -= 0.05) {
     const size = Math.round(f.size * k);
-    ctx.font = `${size}px "${f.family}"`;
+    ctx.font = fontOf(f, size);
     const lines = wrap(ctx, text, maxWidth);
     const lineH = size * f.line;
     fit = { size, lines, lineH, boxH: lines.length * lineH + pad };
@@ -105,7 +123,7 @@ function roundRect(ctx, x, y, w, h, r) {
 export async function renderCard(bottle, time = 'day') {
   const pal = PALETTE[time] || PALETTE.day;
   const f = FONT[bottle.font] || FONT.pen;
-  const fontCss = `${f.size}px "${f.family}"`;
+  const fontCss = fontOf(f, f.size);
   await Promise.all([
     document.fonts.load(fontCss, bottle.text),
     document.fonts.load('700 34px "Noto Sans KR"', '유리병 편지'),
@@ -143,7 +161,7 @@ export async function renderCard(bottle, time = 'day') {
   ctx.drawImage(img, (W - bottleH / 2) / 2, top, bottleH / 2, bottleH);
 
   // 글귀 (종이 카드 위에)
-  ctx.font = `${size}px "${f.family}"`;
+  ctx.font = fontOf(f, size);
   const boxY = top + bottleH + 40;
   ctx.fillStyle = 'rgba(251,247,236,.94)';
   roundRect(ctx, 80, boxY, W - 160, boxH, 40);
@@ -152,7 +170,7 @@ export async function renderCard(bottle, time = 'day') {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   lines.forEach((line, i) => {
-    ctx.fillText(line, W / 2, boxY + 60 + lineH * (i + 0.5));
+    textLine(ctx, f, size, line, W / 2, boxY + 60 + lineH * (i + 0.5));
   });
 
   // 서비스 이름
@@ -175,7 +193,7 @@ export async function renderRecordCard(stats, quote, time = 'day') {
   await Promise.all([
     document.fonts.load('700 64px "Noto Sans KR"', '나의 바다 기록'),
     document.fonts.load('32px "Noto Sans KR"', '건진 편지'),
-    qf ? document.fonts.load(`${qf.size * 0.8}px "${qf.family}"`, quote.text) : null,
+    qf ? document.fonts.load(fontOf(qf, qf.size * 0.8), quote.text) : null,
   ]).catch(() => {});
 
   const canvas = document.createElement('canvas');
@@ -236,9 +254,9 @@ export async function renderRecordCard(stats, quote, time = 'day') {
     ctx.font = '28px "Noto Sans KR"';
     ctx.fillText('마음에 남은 편지', 120, y0 + 52);
     ctx.fillStyle = '#2a2620';
-    ctx.font = `${size}px "${qf.family}"`;
+    ctx.font = fontOf(qf, size);
     ctx.textAlign = 'center';
-    lines.forEach((line, i) => ctx.fillText(line, W / 2, y0 + 100 + lineH * (i + 0.5)));
+    lines.forEach((line, i) => textLine(ctx, qf, size, line, W / 2, y0 + 100 + lineH * (i + 0.5)));
   }
 
   ctx.textAlign = 'center';
@@ -261,7 +279,7 @@ export async function renderJourneyCard(j, hideText, time = 'day', svg) {
   const textSize = Math.round(f.size * 0.75);
   await Promise.all([
     document.fonts.load('700 88px "Noto Sans KR"', '0123456789명에게 닿았어요 내 병을 건져줄 사람?'),
-    hideText ? null : document.fonts.load(`${textSize}px "${f.family}"`, j.text),
+    hideText ? null : document.fonts.load(fontOf(f, textSize), j.text),
   ]).catch(() => {});
 
   const canvas = document.createElement('canvas');
@@ -308,12 +326,12 @@ export async function renderJourneyCard(j, hideText, time = 'day', svg) {
   if (!hideText) {
     const timeline = 170 + (j.recorded ? 190 : 0) + 50;
     const { size, lines, lineH, boxH: h } = fitText(ctx, j.text, { ...f, size: textSize }, 780, H - 170 - y - timeline, 80);
-    ctx.font = `${size}px "${f.family}"`;
+    ctx.font = fontOf(f, size);
     ctx.fillStyle = 'rgba(251,247,236,.94)';
     roundRect(ctx, 100, y, W - 200, h, 32);
     ctx.fill();
     ctx.fillStyle = '#2a2620';
-    lines.forEach((line, i) => ctx.fillText(line, W / 2, y + 40 + lineH * (i + 0.5)));
+    lines.forEach((line, i) => textLine(ctx, f, size, line, W / 2, y + 40 + lineH * (i + 0.5)));
     y += h + 50;
   } else {
     y += 20;

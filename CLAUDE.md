@@ -19,7 +19,7 @@ Claude Code는 작업을 시작할 때마다 이 파일을 먼저 읽는다. 아
   * Firestore: 병 데이터 저장. 위치는 `asia-northeast3`(서울) 권장
 * Vercel: GitHub 저장소 `bottle`을 연결해 push할 때마다 자동 배포. 정적 사이트라 Framework Preset은 `Other`, 빌드 명령 없음
 * 애니메이션: CSS + `requestAnimationFrame` + Web Animations API (외부 애니메이션 라이브러리 없이)
-* 폰트: Google Fonts — UI `Noto Sans KR`, 글귀용 `Nanum Pen Script`(손글씨) · `Gaegu`(둥근 손글씨) · `Nanum Gothic Coding`(타자기) · `Gowun Dodum`(또박또박: 둥글면서 정자체)
+* 폰트: Google Fonts — UI `Noto Sans KR`, 글귀용 `Nanum Pen Script`(손글씨) · `Gaegu`(둥근 손글씨) · `Nanum Gothic Coding`(타자기) · `Gowun Dodum`(또박또박: 둥글면서 정자체, 굵게 표시)
 
 ### 비밀 정보 원칙
 

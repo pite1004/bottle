@@ -1117,7 +1117,7 @@ h1, h2, p { margin: 0; }
 .font-pen { font-family: "Nanum Pen Script", cursive; font-size: 28px; line-height: 1.35; }
 .font-round { font-family: "Gaegu", cursive; font-size: 22px; line-height: 1.5; }
 .font-mono { font-family: "Nanum Gothic Coding", monospace; font-size: 17px; line-height: 1.7; }
-.font-neat { font-family: "Gowun Dodum", "Noto Sans KR", sans-serif; font-size: 19px; line-height: 1.6; }
+.font-neat { font-family: "Gowun Dodum", "Noto Sans KR", sans-serif; font-size: 19px; line-height: 1.6; font-weight: 700; -webkit-text-stroke: .35px currentColor; } /* 굵은 체가 없어 브라우저가 굵게 + 살짝 테두리 */
 
 .letter-meta {
   display: flex;
